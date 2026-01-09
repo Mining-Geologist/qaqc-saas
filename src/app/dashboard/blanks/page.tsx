@@ -217,7 +217,7 @@ function ExportDialog({ charts }: { charts: BlanksChartResult[] }) {
                     ["Max Value", chartData.summary.maxValue.toFixed(4)]
                 ];
 
-                chartSlide.addTable(stats, {
+                chartSlide.addTable(stats as any, {
                     x: 0.5, y: 5.2, w: 4, colW: [2, 2], color: "ffffff", fontSize: 12, border: { color: "334155" }
                 });
             }
