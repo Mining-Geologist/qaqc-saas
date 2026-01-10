@@ -39,3 +39,24 @@ export async function syncUser() {
         return { success: false, error: "Failed to sync user" };
     }
 }
+
+export async function updateUser(data: { firstName: string; lastName: string }) {
+    const user = await currentUser();
+    if (!user) return { success: false, error: "Not authenticated" };
+
+    try {
+        const fullName = `${data.firstName} ${data.lastName}`.trim();
+
+        await prisma.user.update({
+            where: { clerkId: user.id },
+            data: {
+                name: fullName,
+            }
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating user:", error);
+        return { success: false, error: "Failed to update profile" };
+    }
+}
