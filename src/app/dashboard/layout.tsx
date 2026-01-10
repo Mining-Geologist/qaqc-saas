@@ -62,23 +62,21 @@ const PLAN_LABELS: Record<string, string> = {
     PRO_YEARLY: "Pro Yearly",
 };
 
+import { useUser, UserButton } from "@clerk/nextjs";
+import { syncUser } from "@/actions/user";
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const router = useRouter();
-    const { currentUser, signOut } = useAuthStore();
+    const { user, isLoaded } = useUser();
 
+    // Sync user to DB on load
     useEffect(() => {
-        if (!currentUser) {
-            router.push("/sign-in");
+        if (user) {
+            syncUser();
         }
-    }, [currentUser, router]);
+    }, [user]);
 
-    const handleSignOut = () => {
-        signOut();
-        router.push("/sign-in");
-    };
-
-    if (!currentUser) {
+    if (!isLoaded || !user) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
                 <div className="text-white">Loading...</div>
@@ -86,9 +84,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         );
     }
 
-    const userInitials = `${currentUser.firstName[0] || ""}${currentUser.lastName[0] || ""}`.toUpperCase();
-    const userName = `${currentUser.firstName} ${currentUser.lastName}`;
-    const planLabel = PLAN_LABELS[currentUser.plan] || "Free";
+    const userName = user.fullName || "User";
+    // TODO: Fetch real plan from DB
+    const planLabel = "Free";
 
     return (
         <SidebarProvider>
@@ -149,49 +147,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </SidebarGroup>
                     </SidebarContent>
 
-                    <SidebarFooter className="border-t border-slate-800 p-2">
-                        <SidebarMenu>
-                            <SidebarMenuItem>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <SidebarMenuButton className="w-full">
-                                            <Avatar className="w-6 h-6">
-                                                <AvatarFallback className="bg-emerald-500 text-white text-xs">
-                                                    {userInitials}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 text-left">
-                                                <p className="text-sm font-medium text-white">{userName}</p>
-                                                <p className="text-xs text-slate-400">{planLabel}</p>
-                                            </div>
-                                            <ChevronUp className="w-4 h-4 text-slate-400" />
-                                        </SidebarMenuButton>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent side="top" className="w-56 bg-slate-900 border-slate-800">
-                                        <DropdownMenuItem asChild className="text-slate-300 focus:bg-slate-800">
-                                            <Link href="/dashboard/settings">
-                                                <CreditCard className="w-4 h-4 mr-2" />
-                                                <span>Billing</span>
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem asChild className="text-slate-300 focus:bg-slate-800">
-                                            <Link href="/dashboard/settings">
-                                                <Settings className="w-4 h-4 mr-2" />
-                                                <span>Settings</span>
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator className="bg-slate-800" />
-                                        <DropdownMenuItem
-                                            onClick={handleSignOut}
-                                            className="text-red-400 focus:bg-slate-800 cursor-pointer"
-                                        >
-                                            <LogOut className="w-4 h-4 mr-2" />
-                                            <span>Sign Out</span>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </SidebarMenuItem>
-                        </SidebarMenu>
+                    <SidebarFooter className="border-t border-slate-800 p-4">
+                        <div className="flex items-center gap-3 w-full">
+                            <UserButton
+                                appearance={{
+                                    elements: {
+                                        avatarBox: "w-8 h-8"
+                                    }
+                                }}
+                            />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">{userName}</p>
+                                <p className="text-xs text-slate-400">{planLabel}</p>
+                            </div>
+                        </div>
                     </SidebarFooter>
                 </Sidebar>
 
@@ -208,27 +177,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <div className="flex items-center gap-3">
                             <Badge
                                 variant="outline"
-                                className={
-                                    currentUser.plan === "FREE"
-                                        ? "border-slate-500/50 text-slate-400"
-                                        : "border-emerald-500/50 text-emerald-400"
-                                }
+                                className="border-slate-500/50 text-slate-400"
                             >
                                 {planLabel}
                             </Badge>
-                            {currentUser.plan === "FREE" && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-emerald-400 hover:text-emerald-300"
-                                    asChild
-                                >
-                                    <Link href="/dashboard/settings">
-                                        <CreditCard className="w-4 h-4 mr-2" />
-                                        Upgrade
-                                    </Link>
-                                </Button>
-                            )}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-emerald-400 hover:text-emerald-300"
+                                asChild
+                            >
+                                <Link href="/dashboard/settings">
+                                    <CreditCard className="w-4 h-4 mr-2" />
+                                    Upgrade
+                                </Link>
+                            </Button>
                         </div>
                     </header>
 

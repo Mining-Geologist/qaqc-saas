@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, MoreVertical, Mail, Ban, Trash2, Crown, Edit, Users } from "lucide-react";
-import { useAuthStore, User } from "@/stores/auth-store";
+import { Search, MoreVertical, Users, Trash2, Crown, Edit, Ban } from "lucide-react";
+import { getRecentUsers } from "@/actions/admin";
 
 const PLAN_LABELS: Record<string, string> = {
     FREE: "Free",
@@ -25,69 +25,70 @@ const PLAN_REVENUE: Record<string, number> = {
 };
 
 export default function AdminUsersPage() {
-    const { users, updateUserPlan, updateUserStatus, deleteUser } = useAuthStore();
+    const [dbUsers, setDbUsers] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
     const [searchQuery, setSearchQuery] = useState("");
     const [planFilter, setPlanFilter] = useState<string>("all");
     const [statusFilter, setStatusFilter] = useState<string>("all");
 
-    const filteredUsers = users.filter((user) => {
+    useEffect(() => {
+        getRecentUsers().then((data) => {
+            setDbUsers(data);
+            setIsLoading(false);
+        });
+    }, []);
+
+    const filteredUsers = dbUsers.filter((user) => {
+        const fullName = user.name || "Unknown";
         const matchesSearch =
-            `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesPlan = planFilter === "all" || user.plan === planFilter;
-        const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+            fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (user.email || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+        const userPlan = user.subscription?.plan || "FREE";
+        const matchesPlan = planFilter === "all" || userPlan === planFilter;
+
+        // Status typically on subscription, but fallback to active
+        const status = user.subscription?.status || "ACTIVE";
+        const matchesStatus = statusFilter === "all" || status.toLowerCase() === statusFilter.toLowerCase();
+
         return matchesSearch && matchesPlan && matchesStatus;
     });
 
-    const getPlanBadge = (plan: User["plan"]) => {
-        switch (plan) {
+    const getPlanBadge = (plan: string) => {
+        const p = plan || "FREE";
+        switch (p) {
             case "PRO_YEARLY":
-                return <Badge className="bg-pink-500/20 text-pink-400 border-pink-500/50">{PLAN_LABELS[plan]}</Badge>;
+                return <Badge className="bg-pink-500/20 text-pink-400 border-pink-500/50">{PLAN_LABELS[p]}</Badge>;
             case "PRO_MONTHLY":
-                return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50">{PLAN_LABELS[plan]}</Badge>;
+                return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50">{PLAN_LABELS[p]}</Badge>;
             default:
-                return <Badge className="bg-slate-500/20 text-slate-400 border-slate-500/50">{PLAN_LABELS[plan] || "Free"}</Badge>;
+                return <Badge className="bg-slate-500/20 text-slate-400 border-slate-500/50">Free</Badge>;
         }
     };
 
-    const getStatusBadge = (status: User["status"]) => {
-        switch (status) {
-            case "active":
-                return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">Active</Badge>;
-            case "suspended":
-                return <Badge className="bg-red-500/20 text-red-400 border-red-500/50">Suspended</Badge>;
-            default:
-                return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">Pending</Badge>;
-        }
+    const getStatusBadge = (status: string) => {
+        const s = status || "ACTIVE";
+        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">{s}</Badge>;
     };
 
-    const handleChangePlan = (userId: string, newPlan: User["plan"]) => {
-        updateUserPlan(userId, newPlan);
-    };
+    const handleChangePlan = (userId: string, newPlan: string) => alert("Plan change not connected to DB yet");
+    const handleToggleSuspend = (userId: string) => alert("Suspend not connected to DB yet");
+    const handleDelete = (userId: string) => alert("Delete not connected to DB yet");
 
-    const handleToggleSuspend = (userId: string, currentStatus: User["status"]) => {
-        updateUserStatus(userId, currentStatus === "suspended" ? "active" : "suspended");
-    };
-
-    const handleDelete = (userId: string) => {
-        if (confirm("Are you sure you want to delete this user?")) {
-            deleteUser(userId);
-        }
-    };
-
-    const totalRevenue = users.reduce((sum, u) => sum + (PLAN_REVENUE[u.plan] || 0), 0);
+    const totalRevenue = dbUsers.reduce((sum, u) => sum + (PLAN_REVENUE[u.subscription?.plan || "FREE"] || 0), 0);
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">User Management</h1>
-                    <p className="text-slate-400">View and manage all SaaS users</p>
+                    <p className="text-slate-400">View and manage all SaaS users (Real DB)</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 px-3 py-1">
                         <Users className="w-3 h-3 mr-1" />
-                        {users.length} Total Users
+                        {dbUsers.length} Total Users
                     </Badge>
                     <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50 px-3 py-1">
                         ${totalRevenue.toLocaleString()} Revenue
@@ -95,7 +96,7 @@ export default function AdminUsersPage() {
                 </div>
             </div>
 
-            {users.length === 0 ? (
+            {dbUsers.length === 0 && !isLoading ? (
                 <Card className="bg-slate-900/50 border-slate-800">
                     <CardContent className="py-12 text-center">
                         <Users className="w-12 h-12 mx-auto text-slate-600 mb-4" />
@@ -162,75 +163,78 @@ export default function AdminUsersPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredUsers.map((user) => (
-                                        <TableRow key={user.id} className="border-slate-800">
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="w-8 h-8">
-                                                        <AvatarFallback className="bg-purple-500 text-white text-xs">
-                                                            {user.firstName[0]}{user.lastName[0]}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <p className="text-white font-medium">{user.firstName} {user.lastName}</p>
-                                                        <p className="text-slate-400 text-sm">{user.email}</p>
+                                    {filteredUsers.map((user) => {
+                                        const initials = (user.name || "U").substring(0, 2).toUpperCase();
+                                        return (
+                                            <TableRow key={user.id} className="border-slate-800">
+                                                <TableCell>
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="w-8 h-8">
+                                                            <AvatarFallback className="bg-purple-500 text-white text-xs">
+                                                                {initials}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="text-white font-medium">{user.name}</p>
+                                                            <p className="text-slate-400 text-sm">{user.email}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>{getPlanBadge(user.plan)}</TableCell>
-                                            <TableCell>{getStatusBadge(user.status)}</TableCell>
-                                            <TableCell className="text-slate-300">{user.teamMembers?.length || 1}</TableCell>
-                                            <TableCell className="text-slate-300">${PLAN_REVENUE[user.plan] || 0}</TableCell>
-                                            <TableCell className="text-slate-300">{user.createdAt}</TableCell>
-                                            <TableCell className="text-right">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
-                                                            <MoreVertical className="w-4 h-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">
-                                                        <DropdownMenuItem
-                                                            className="text-slate-300 focus:bg-slate-800"
-                                                            onClick={() => handleChangePlan(user.id, "PRO_YEARLY")}
-                                                        >
-                                                            <Crown className="w-4 h-4 mr-2" />
-                                                            Set Pro Yearly
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            className="text-slate-300 focus:bg-slate-800"
-                                                            onClick={() => handleChangePlan(user.id, "PRO_MONTHLY")}
-                                                        >
-                                                            <Edit className="w-4 h-4 mr-2" />
-                                                            Set Pro Monthly
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            className="text-slate-300 focus:bg-slate-800"
-                                                            onClick={() => handleChangePlan(user.id, "FREE")}
-                                                        >
-                                                            <Edit className="w-4 h-4 mr-2" />
-                                                            Set Free
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator className="bg-slate-800" />
-                                                        <DropdownMenuItem
-                                                            className="text-yellow-400 focus:bg-slate-800"
-                                                            onClick={() => handleToggleSuspend(user.id, user.status)}
-                                                        >
-                                                            <Ban className="w-4 h-4 mr-2" />
-                                                            {user.status === "suspended" ? "Unsuspend" : "Suspend"}
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            className="text-red-400 focus:bg-slate-800"
-                                                            onClick={() => handleDelete(user.id)}
-                                                        >
-                                                            <Trash2 className="w-4 h-4 mr-2" />
-                                                            Delete User
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                                </TableCell>
+                                                <TableCell>{getPlanBadge(user.subscription?.plan)}</TableCell>
+                                                <TableCell>{getStatusBadge(user.subscription?.status)}</TableCell>
+                                                <TableCell className="text-slate-300">1</TableCell>
+                                                <TableCell className="text-slate-300">${PLAN_REVENUE[user.subscription?.plan || "FREE"] || 0}</TableCell>
+                                                <TableCell className="text-slate-300">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
+                                                                <MoreVertical className="w-4 h-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">
+                                                            <DropdownMenuItem
+                                                                className="text-slate-300 focus:bg-slate-800"
+                                                                onClick={() => handleChangePlan(user.id, "PRO_YEARLY")}
+                                                            >
+                                                                <Crown className="w-4 h-4 mr-2" />
+                                                                Set Pro Yearly
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                className="text-slate-300 focus:bg-slate-800"
+                                                                onClick={() => handleChangePlan(user.id, "PRO_MONTHLY")}
+                                                            >
+                                                                <Edit className="w-4 h-4 mr-2" />
+                                                                Set Pro Monthly
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                className="text-slate-300 focus:bg-slate-800"
+                                                                onClick={() => handleChangePlan(user.id, "FREE")}
+                                                            >
+                                                                <Edit className="w-4 h-4 mr-2" />
+                                                                Set Free
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator className="bg-slate-800" />
+                                                            <DropdownMenuItem
+                                                                className="text-yellow-400 focus:bg-slate-800"
+                                                                onClick={() => handleToggleSuspend(user.id)}
+                                                            >
+                                                                <Ban className="w-4 h-4 mr-2" />
+                                                                Toggle Suspend
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                className="text-red-400 focus:bg-slate-800"
+                                                                onClick={() => handleDelete(user.id)}
+                                                            >
+                                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                                Delete User
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </CardContent>
