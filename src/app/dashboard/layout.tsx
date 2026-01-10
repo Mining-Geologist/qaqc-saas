@@ -155,6 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <SidebarFooter className="border-t border-slate-800 p-4">
                         <div className="flex items-center gap-3 w-full">
                             <UserButton
+                                afterSignOutUrl="/"
                                 appearance={{
                                     elements: {
                                         avatarBox: "w-8 h-8"
