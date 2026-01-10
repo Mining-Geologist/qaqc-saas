@@ -1,14 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarGroupContent,
+SidebarGroupContent,
     SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
@@ -68,11 +58,16 @@ import { syncUser } from "@/actions/user";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { user, isLoaded } = useUser();
+    const [dbUser, setDbUser] = useState<any>(null);
 
-    // Sync user to DB on load
+    // Sync user to DB on load and get real data
     useEffect(() => {
         if (user) {
-            syncUser();
+            syncUser().then((result) => {
+                if (result.success) {
+                    setDbUser(result.user);
+                }
+            });
         }
     }, [user]);
 
@@ -84,9 +79,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         );
     }
 
-    const userName = user.fullName || "User";
-    // TODO: Fetch real plan from DB
-    const planLabel = "Free";
+    const userName = dbUser?.name || user.fullName || "User";
+    const userPlan = dbUser?.subscription?.plan || "FREE";
+    const planLabel = PLAN_LABELS[userPlan] || "Free";
 
     return (
         <SidebarProvider>
