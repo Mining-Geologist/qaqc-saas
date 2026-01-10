@@ -64,13 +64,13 @@ export async function POST(req: Request) {
                 update: {
                     clerkId: id,
                     name,
-                    image: image_url,
+                    avatarUrl: image_url,
                 },
                 create: {
                     clerkId: id,
                     email,
                     name,
-                    image: image_url,
+                    avatarUrl: image_url,
                 }
             });
         }
