@@ -62,7 +62,7 @@ const PLAN_LABELS: Record<string, string> = {
     PRO_YEARLY: "Pro Yearly",
 };
 
-import { useUser, UserButton } from "@clerk/nextjs";
+import { useUser, UserButton, SignOutButton } from "@clerk/nextjs";
 import { syncUser } from "@/actions/user";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -166,6 +166,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <p className="text-sm font-medium text-white truncate">{userName}</p>
                                 <p className="text-xs text-slate-400">{planLabel}</p>
                             </div>
+                            <SignOutButton redirectUrl="/">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800" title="Sign Out">
+                                    <LogOut className="w-4 h-4" />
+                                </Button>
+                            </SignOutButton>
                         </div>
                     </SidebarFooter>
                 </Sidebar>
