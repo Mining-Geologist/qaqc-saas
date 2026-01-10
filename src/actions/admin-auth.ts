@@ -4,16 +4,19 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function adminLogin(formData: FormData) {
+    const email = formData.get("email");
     const password = formData.get("password");
+
+    const correctEmail = process.env.ADMIN_EMAIL;
     const correctPassword = process.env.ADMIN_ACCESS_PASSWORD;
 
-    if (!correctPassword) {
-        return { error: "Admin password not configured in environment variables." };
+    if (!correctPassword || !correctEmail) {
+        return { error: "Admin credentials not configured in environment variables." };
     }
 
-    if (password === correctPassword) {
+    if (email === correctEmail && password === correctPassword) {
         // Set a cookie manually
-        cookies().set("admin_session", "true", {
+        (await cookies()).set("admin_session", "true", {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             maxAge: 60 * 60 * 24, // 1 day
@@ -26,6 +29,6 @@ export async function adminLogin(formData: FormData) {
 }
 
 export async function adminLogout() {
-    cookies().delete("admin_session");
+    (await cookies()).delete("admin_session");
     redirect("/admin/login");
 }

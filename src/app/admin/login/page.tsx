@@ -33,6 +33,16 @@ export default function AdminLoginPage() {
                 <h1 className="text-2xl font-bold mb-6 text-center">Admin Access</h1>
                 <form action={handleSubmit} className="space-y-4">
                     <div>
+                        <label className="block text-sm font-medium mb-1">Email Address</label>
+                        <Input
+                            type="email"
+                            name="email"
+                            placeholder="admin@example.com"
+                            className="bg-slate-950 border-slate-700"
+                            required
+                        />
+                    </div>
+                    <div>
                         <label className="block text-sm font-medium mb-1">Secret Password</label>
                         <Input
                             type="password"
