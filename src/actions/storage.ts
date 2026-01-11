@@ -14,11 +14,17 @@ function getSupabaseClient(): SupabaseClient {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        console.log("Supabase URL:", supabaseUrl ? "SET" : "MISSING");
-        console.log("Service Key:", supabaseServiceKey ? "SET (length: " + supabaseServiceKey.length + ")" : "MISSING");
+        // Log full URL for debugging (safe to log URL, not the key)
+        console.log("Supabase URL:", supabaseUrl || "MISSING");
+        console.log("Service Key:", supabaseServiceKey ? `SET (length: ${supabaseServiceKey.length})` : "MISSING");
 
         if (!supabaseUrl || !supabaseServiceKey) {
             throw new Error(`Missing Supabase configuration. URL: ${!!supabaseUrl}, Key: ${!!supabaseServiceKey}`);
+        }
+
+        // Validate URL format
+        if (!supabaseUrl.startsWith("https://") || !supabaseUrl.includes(".supabase.co")) {
+            throw new Error(`Invalid Supabase URL format: ${supabaseUrl}`);
         }
 
         supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
@@ -87,9 +93,22 @@ export async function uploadUserFile(
             path,
             size: buffer.length,
         };
-    } catch (error) {
-        console.error("Upload error:", error);
-        const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
+    } catch (error: unknown) {
+        console.error("Upload error details:", {
+            name: error instanceof Error ? error.name : "Unknown",
+            message: error instanceof Error ? error.message : String(error),
+            cause: error instanceof Error ? (error as any).cause : undefined,
+            stack: error instanceof Error ? error.stack : undefined,
+        });
+
+        let errorMessage = "Failed to upload file";
+        if (error instanceof Error) {
+            errorMessage = error.message;
+            // Add cause if available (common for fetch errors)
+            if ((error as any).cause) {
+                errorMessage += ` (Cause: ${(error as any).cause.message || (error as any).cause})`;
+            }
+        }
         return { success: false, error: errorMessage };
     }
 }
