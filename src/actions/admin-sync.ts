@@ -10,9 +10,18 @@ export async function syncClerkUsers() {
     if (!admin) return { success: false, error: "Unauthorized" };
 
     try {
+        if (!process.env.CLERK_SECRET_KEY) {
+            return { success: false, error: "Missing CLERK_SECRET_KEY in environment variables" };
+        }
+
         // 2. Fetch limit 100 users (pagination needed for large scale, simplified for now)
         const client = await clerkClient();
         const clerkUsers = await client.users.getUserList({ limit: 100 });
+
+        console.log(`Clerk API returned ${clerkUsers.data?.length ?? 0} users`);
+        if (!clerkUsers.data || clerkUsers.data.length === 0) {
+            return { success: true, synced: 0, errors: 0, message: "No users returned from Clerk API" };
+        }
 
         let syncedCount = 0;
         let errors = 0;
