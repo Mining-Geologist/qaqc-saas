@@ -32,6 +32,7 @@ import { calculateCrmSummary, CrmSummary, CrmBounds } from "@/lib/mining-math";
 import { useAnalysisStore } from "@/stores/analysis-store";
 import { useUser } from "@clerk/nextjs";
 import { saveAnalysisDraft, loadAnalysisDraft } from "@/actions/analysis-persistence";
+import { uploadUserFile, downloadUserFile } from "@/actions/storage";
 
 export interface ChartDataPoint {
     index: number;
@@ -916,6 +917,12 @@ function CRMPageContent({ userId }: { userId: string }) {
     const [activeTab, setActiveTab] = useState("setup");
     const [error, setError] = useState<string | null>(null);
 
+    // Cloud storage state
+    const [cloudFilePath, setCloudFilePath] = useState<string | null>(null);
+    const [cloudFileName, setCloudFileName] = useState<string | null>(null);
+    const [isLoadingCloud, setIsLoadingCloud] = useState(false);
+    const [isUploadingCloud, setIsUploadingCloud] = useState(false);
+
     const [charts, setCharts] = useState<CRMChartData[]>(
         (draft?.results as unknown as CRMChartData[]) ?? []
     );
@@ -1025,6 +1032,42 @@ function CRMPageContent({ userId }: { userId: string }) {
                 if (style?.chartDefaults) {
                     setChartDefaults(style.chartDefaults);
                 }
+
+                // Download CSV from cloud storage if available
+                if (res.draft.filePath) {
+                    console.log("Downloading CSV from cloud:", res.draft.filePath);
+                    setCloudFilePath(res.draft.filePath);
+                    setCloudFileName(res.draft.fileName || "data.csv");
+                    setIsLoadingCloud(true);
+
+                    downloadUserFile(res.draft.filePath).then(downloadRes => {
+                        if (downloadRes.success && downloadRes.data) {
+                            // Decode base64 and parse CSV
+                            const csvText = atob(downloadRes.data);
+                            Papa.parse(csvText, {
+                                header: true,
+                                skipEmptyLines: true,
+                                complete: (results) => {
+                                    const parsedData = results.data as Record<string, unknown>[];
+                                    const cols = results.meta.fields ?? [];
+                                    setRawData(parsedData);
+                                    setColumns(cols);
+                                    console.log("Cloud CSV loaded:", parsedData.length, "rows");
+                                },
+                                error: (err) => {
+                                    console.error("Failed to parse cloud CSV:", err);
+                                    setError("Failed to load cloud data");
+                                }
+                            });
+                        } else {
+                            console.error("Failed to download from cloud:", downloadRes.error);
+                        }
+                        setIsLoadingCloud(false);
+                    }).catch(err => {
+                        console.error("Cloud download error:", err);
+                        setIsLoadingCloud(false);
+                    });
+                }
             }
         }).catch(err => console.error("Failed to load from DB:", err));
     }, [userId]);
@@ -1116,6 +1159,7 @@ function CRMPageContent({ userId }: { userId: string }) {
             if (!file) return;
             setError(null);
 
+            // First parse the CSV locally
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
@@ -1128,6 +1172,50 @@ function CRMPageContent({ userId }: { userId: string }) {
                     setSelectedElements([]);
                     setSelectedCRMs({});
                     setCharts([]);
+
+                    // Upload to cloud storage (non-blocking)
+                    if (userId !== "guest") {
+                        setIsUploadingCloud(true);
+
+                        // Read file as base64 for upload
+                        const reader = new FileReader();
+                        reader.onload = async (e) => {
+                            const base64Data = e.target?.result as string;
+                            console.log("Uploading CSV to cloud storage...");
+
+                            const uploadResult = await uploadUserFile("CRM", base64Data, file.name);
+
+                            if (uploadResult.success && uploadResult.path) {
+                                console.log("Cloud upload successful:", uploadResult.path);
+                                setCloudFilePath(uploadResult.path);
+                                setCloudFileName(file.name);
+
+                                // Save file info along with next draft save
+                                const draftToSave = {
+                                    data: null,
+                                    columns: cols,
+                                    columnMapping: {},
+                                    filters: {},
+                                    styleSettings: {},
+                                    results: [],
+                                    overrides: {},
+                                    lastModified: Date.now()
+                                };
+
+                                await saveAnalysisDraft("CRM", draftToSave, {
+                                    filePath: uploadResult.path,
+                                    fileName: file.name,
+                                    fileSize: uploadResult.size || file.size
+                                });
+                                console.log("File path saved to database");
+                            } else {
+                                console.error("Cloud upload failed:", uploadResult.error);
+                                setError(`Cloud upload failed: ${uploadResult.error}`);
+                            }
+                            setIsUploadingCloud(false);
+                        };
+                        reader.readAsDataURL(file);
+                    }
                 },
                 error: (error) => {
                     setError(`Failed to parse CSV: ${error.message}`);

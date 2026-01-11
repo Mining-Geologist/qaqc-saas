@@ -14,9 +14,17 @@ type DraftData = {
     results?: any;
     overrides?: any;
     lastModified: number;
+    // Cloud storage file info
+    filePath?: string;
+    fileName?: string;
+    fileSize?: number;
 };
 
-export async function saveAnalysisDraft(toolType: QaqcToolType, draft: DraftData) {
+export async function saveAnalysisDraft(
+    toolType: QaqcToolType,
+    draft: DraftData,
+    fileInfo?: { filePath: string; fileName: string; fileSize: number }
+) {
     const user = await currentUser();
     if (!user) return { success: false, error: "Unauthorized" };
 
@@ -38,6 +46,12 @@ export async function saveAnalysisDraft(toolType: QaqcToolType, draft: DraftData
                     results: draft.results,
                     overrides: draft.overrides,
                 },
+                // Update file info if provided
+                ...(fileInfo && {
+                    filePath: fileInfo.filePath,
+                    fileName: fileInfo.fileName,
+                    fileSize: fileInfo.fileSize,
+                }),
                 lastActive: new Date(),
             },
             create: {
@@ -52,6 +66,12 @@ export async function saveAnalysisDraft(toolType: QaqcToolType, draft: DraftData
                     results: draft.results,
                     overrides: draft.overrides,
                 },
+                // Set file info if provided
+                ...(fileInfo && {
+                    filePath: fileInfo.filePath,
+                    fileName: fileInfo.fileName,
+                    fileSize: fileInfo.fileSize,
+                }),
             },
         });
         return { success: true };
@@ -79,7 +99,7 @@ export async function loadAnalysisDraft(toolType: QaqcToolType) {
 
         // Reconstruct the store's draft format
         const config = draft.config as any;
-        const parsedDraft: DraftData = {
+        const parsedDraft: DraftData & { filePath?: string; fileName?: string; fileSize?: number } = {
             data: draft.data as any,
             columns: config.columns || [],
             columnMapping: config.columnMapping || {},
@@ -88,6 +108,10 @@ export async function loadAnalysisDraft(toolType: QaqcToolType) {
             results: config.results,
             overrides: config.overrides,
             lastModified: draft.lastActive.getTime(),
+            // Include cloud storage file info
+            filePath: draft.filePath || undefined,
+            fileName: draft.fileName || undefined,
+            fileSize: draft.fileSize || undefined,
         };
 
         return { success: true, draft: parsedDraft };

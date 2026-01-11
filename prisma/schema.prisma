@@ -113,11 +113,16 @@ model AnalysisDraft {
 
   toolType QaqcToolType
 
-  // Draft data (JSON)
+  // Draft data (JSON) - now used for config only, not raw data
   data Json
 
   // Draft configuration (JSON)
   config Json
+
+  // Reference to uploaded file in cloud storage
+  filePath  String?  // Supabase Storage path
+  fileName  String?  // Original filename
+  fileSize  Int?     // Size in bytes
 
   // Timestamp of last user interaction
   lastActive DateTime @default(now())
@@ -125,6 +130,7 @@ model AnalysisDraft {
   @@unique([userId, toolType])
   @@map("analysis_drafts")
 }
+
 
 enum QaqcToolType {
   CRM
