@@ -18,7 +18,12 @@ type DraftData = {
 
 export async function saveAnalysisDraft(toolType: QaqcToolType, draft: DraftData) {
     const clerkUser = await currentUser();
-    if (!clerkUser) return { success: false, error: "Unauthorized" };
+
+    if (!clerkUser) {
+        console.error("Save Draft Unauthorized: No clerkUser found");
+        return { success: false, error: "Unauthorized" };
+    }
+    console.log(`Saving draft for ${clerkUser.id} (${clerkUser.emailAddresses[0]?.emailAddress})`);
 
     try {
         // Resolve internal DB user ID from Clerk ID

@@ -6,8 +6,14 @@ import { db as prisma } from "@/lib/db";
 export async function syncClerkUsers() {
     // 1. Verify Admin (Basic check, in production use proper role check)
     const admin = await currentUser();
+
+    console.log("Sync User Auth Identity:", admin?.id, admin?.emailAddresses?.[0]?.emailAddress);
+
     // Allow for now if authenticated, or check against env list
-    if (!admin) return { success: false, error: "Unauthorized" };
+    if (!admin) {
+        console.error("Sync Unauthorized: No currentUser found");
+        return { success: false, error: "Unauthorized: No active session found." };
+    }
 
     try {
         if (!process.env.CLERK_SECRET_KEY) {
