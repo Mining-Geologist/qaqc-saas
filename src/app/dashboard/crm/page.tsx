@@ -1309,16 +1309,12 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {/* Saving Indicator */}
+                    {/* Cloud Sync Indicator */}
                     <div className="text-sm font-medium">
-                        {isFirstMount.current ? (
-                            <span className="text-slate-500">Loading...</span>
-                        ) : (
-                            <span className="text-emerald-500 flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                Cloud Sync Active
-                            </span>
-                        )}
+                        <span className="text-emerald-500 flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Cloud Sync Active
+                        </span>
                     </div>
 
                     {charts.length > 0 && (
@@ -1330,7 +1326,9 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
                         </div>
                     )}
                 </div>
-            </div>    {error && (
+            </div>
+
+            {error && (
                 <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                     <p className="text-red-400">{error}</p>
