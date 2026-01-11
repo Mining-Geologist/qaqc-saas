@@ -1094,32 +1094,30 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
         return Array.from(crms).sort();
     }, [rawData, mapping.crm, mapping.element]);
 
-    const handleFileUpload = useCallback(
-        (event: React.ChangeEvent<HTMLInputElement>) => {
-            const file = event.target.files?.[0];
-            if (!file) return;
-            setError(null);
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        setError(null);
 
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    const parsedData = results.data as Record<string, unknown>[];
-                    const cols = results.meta.fields ?? [];
-                    setRawData(parsedData);
-                    setColumns(cols);
-                    setData(userId, "CRM", parsedData);
-                    setSelectedElements([]);
-                    setSelectedCRMs({});
-                    setCharts([]);
-                },
-                error: (error) => {
-                    setError(`Failed to parse CSV: ${error.message}`);
-                },
-            });
-        },
-        [setData]
-    );
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            dynamicTyping: true,
+            complete: (results) => {
+                const parsedData = results.data as Record<string, unknown>[];
+                const cols = results.meta.fields ?? [];
+                setRawData(parsedData);
+                setColumns(cols);
+                setData(userId, "CRM", parsedData);
+                setSelectedElements([]);
+                setSelectedCRMs({});
+                setCharts([]);
+            },
+            error: (error) => {
+                setError(`Failed to parse CSV: ${error.message}`);
+            },
+        });
+    };
 
     const handleMappingChange = (key: string, value: string) => {
         setMapping({ ...mapping, [key]: value });
