@@ -17,13 +17,23 @@ const PLAN_REVENUE: Record<string, number> = {
 export default function AdminDashboardPage() {
     const [stats, setStats] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isSyncing, setIsSyncing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const loadStats = () => {
-        getAdminStats().then((data) => {
-            setStats(data);
-            setIsLoading(false);
-        });
+        setIsLoading(true);
+        setError(null);
+        getAdminStats()
+            .then((data) => {
+                if (!data) throw new Error("No data received");
+                setStats(data);
+            })
+            .catch((err) => {
+                console.error("Failed to load admin stats:", err);
+                setError("Failed to load stats. Please try again.");
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
     };
 
     useEffect(() => {
@@ -35,7 +45,7 @@ export default function AdminDashboardPage() {
         try {
             const res = await syncClerkUsers();
             if (res.success) {
-                alert(`Synced ${res.synced} users successfully.`);
+                alert(`Synced ${res.synced} users successfully.\nErrors: ${res.errors}`);
                 loadStats();
             } else {
                 alert(`Sync failed: ${res.error}`);
@@ -48,9 +58,20 @@ export default function AdminDashboardPage() {
         }
     };
 
-    if (isLoading || !stats) {
-        return <div className="text-white">Loading stats...</div>;
+    if (isLoading) {
+        return <div className="text-white flex items-center gap-2"><div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /> Loading stats...</div>;
     }
+
+    if (error) {
+        return (
+            <div className="text-red-400 p-4 border border-red-500/20 bg-red-500/10 rounded-lg">
+                <p>Error: {error}</p>
+                <Button onClick={loadStats} variant="outline" className="mt-2 text-white border-slate-700">Retry</Button>
+            </div>
+        );
+    }
+
+    if (!stats) return <div className="text-slate-400">No stats available.</div>;
 
     const { totalUsers, activeUsers, paidUsers, totalRevenue, planDistribution, recentUsers } = stats;
 

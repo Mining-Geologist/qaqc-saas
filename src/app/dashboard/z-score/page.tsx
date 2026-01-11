@@ -23,7 +23,9 @@ import {
 } from "recharts";
 import { calculateZScore, calculateZScoreSummary, Z_SCORE_CONTROL_LINES } from "@/lib/mining-math";
 import { useAnalysisStore } from "@/stores/analysis-store";
+import { saveAnalysisDraft, loadAnalysisDraft } from "@/actions/analysis-persistence";
 import { useUser } from "@clerk/nextjs";
+import { useEffect } from "react";
 
 interface ChartDataPoint {
     index: number;
@@ -96,8 +98,71 @@ function ZScorePageContent({ userId }: { userId: string }) {
                     setError(`Failed to parse CSV: ${error.message}`);
                 },
             });
+            // -----------------------------------------------------------------------------
+            // Cloud Synchronization
+            // -----------------------------------------------------------------------------
+            const isFirstMount = useRef(true);
+
+            // 1. Hydrate from Server on Mount
+            useEffect(() => {
+                if (userId === "guest") return;
+
+                loadAnalysisDraft("Z_SCORE").then((res) => {
+                    if (res.success && res.draft) {
+                        console.log("Hydrating Z_SCORE from server:", res.draft);
+                        // setDraft(userId, "Z_SCORE", res.draft); // Store doesn't have setDraft exposed here? Verify logic.
+
+                        // Update local state
+                        if (res.draft.data) {
+                            setLocalData(res.draft.data as any);
+                            setData(userId, "Z_SCORE", res.draft.data as any);
+                        }
+                        if (res.draft.columns) setColumns(res.draft.columns);
+                        if (res.draft.columnMapping) {
+                            setMapping({
+                                element: res.draft.columnMapping.element || "",
+                                crm: res.draft.columnMapping.crm || "",
+                                value: res.draft.columnMapping.value || "",
+                                expected: res.draft.columnMapping.expected || "",
+                                sd: res.draft.columnMapping.sd || "",
+                                date: res.draft.columnMapping.date || "",
+                                company: res.draft.columnMapping.company || "",
+                            });
+                        }
+                    }
+                });
+            }, [userId]);
+
+            // 2. Debounced Save to Server on Change
+            useEffect(() => {
+                if (isFirstMount.current) {
+                    isFirstMount.current = false;
+                    return;
+                }
+
+                const timer = setTimeout(() => {
+                    if (!userId || userId === "guest") return;
+
+                    const currentDraft = {
+                        data: data,
+                        columns,
+                        columnMapping: mapping,
+                        filters: {},
+                        styleSettings: {},
+                        results: [],
+                        overrides: {},
+                        lastModified: Date.now()
+                    };
+
+                    console.log("Auto-saving Z_SCORE to server...");
+                    saveAnalysisDraft("Z_SCORE", currentDraft).catch(err => console.error("Auto-save failed", err));
+                }, 2000);
+
+                return () => clearTimeout(timer);
+            }, [data, columns, mapping, userId]);
+
         },
-        [setData]
+        [setData, userId, data, columns, mapping]
     );
 
     const handleMappingChange = (key: string, value: string) => {

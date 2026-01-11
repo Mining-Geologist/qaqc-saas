@@ -29,7 +29,9 @@ import {
 } from "recharts";
 import { analyzeBlanks, BlankDataPoint, BlankSummary } from "@/lib/mining-math/blanks";
 import { useAnalysisStore } from "@/stores/analysis-store";
+import { saveAnalysisDraft, loadAnalysisDraft } from "@/actions/analysis-persistence";
 import { useUser } from "@clerk/nextjs";
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import PptxGenJS from "pptxgenjs";
@@ -583,6 +585,75 @@ function BlanksPageContent({ userId }: { userId: string }) {
         backgroundColor: "#0f172a",
         textColor: "#94a3b8"
     });
+
+    // -----------------------------------------------------------------------------
+    // Cloud Synchronization
+    // -----------------------------------------------------------------------------
+    const isFirstMount = useRef(true);
+
+    // 1. Hydrate from Server on Mount
+    useEffect(() => {
+        if (userId === "guest") return;
+
+        loadAnalysisDraft("BLANKS").then((res) => {
+            if (res.success && res.draft) {
+                console.log("Hydrating BLANKS from server:", res.draft);
+                setDraft(userId, "BLANKS", res.draft);
+
+                // Update local state
+                if (res.draft.data) setRawData(res.draft.data as any);
+                if (res.draft.columns) setColumns(res.draft.columns);
+                if (res.draft.results) setCharts(res.draft.results as any);
+                if (res.draft.overrides) setChartOverrides(res.draft.overrides as any);
+
+                const style = res.draft.styleSettings as any;
+                if (style?.chartDefaults) setChartDefaults(style.chartDefaults);
+
+                if (res.draft.columnMapping) {
+                    setMapping({
+                        element: res.draft.columnMapping.element || "",
+                        lab: res.draft.columnMapping.lab || "",
+                        sampleId: res.draft.columnMapping.sampleId || "",
+                        value: res.draft.columnMapping.value || "",
+                        limit: res.draft.columnMapping.limit || "",
+                        date: res.draft.columnMapping.date || "",
+                        type: res.draft.columnMapping.type || "",
+                        unit: res.draft.columnMapping.unit || "",
+                    });
+                }
+                const adv = res.draft.filters?.advanced as any;
+                if (adv) setFilters(adv);
+            }
+        });
+    }, [userId]);
+
+    // 2. Debounced Save to Server on Change
+    useEffect(() => {
+        if (isFirstMount.current) {
+            isFirstMount.current = false;
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            if (!userId || userId === "guest") return;
+
+            const currentDraft = {
+                data: rawData,
+                columns,
+                columnMapping: mapping,
+                filters: { advanced: filters },
+                styleSettings: { chartDefaults },
+                results: charts,
+                overrides: chartOverrides,
+                lastModified: Date.now()
+            };
+
+            console.log("Auto-saving BLANKS to server...");
+            saveAnalysisDraft("BLANKS", currentDraft).catch(err => console.error("Auto-save failed", err));
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [rawData, columns, mapping, filters, chartDefaults, charts, chartOverrides, userId]);
 
     // Persistence Effect
     useEffect(() => {

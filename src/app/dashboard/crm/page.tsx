@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,9 @@ import {
 } from "recharts";
 import { calculateCrmSummary, CrmSummary, CrmBounds } from "@/lib/mining-math";
 import { useAnalysisStore } from "@/stores/analysis-store";
+import { saveAnalysisDraft, loadAnalysisDraft } from "@/actions/analysis-persistence";
 import { useUser } from "@clerk/nextjs";
+
 
 export interface ChartDataPoint {
     index: number;
@@ -960,6 +962,85 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
         backgroundColor: (draft?.styleSettings?.chartDefaults as any)?.backgroundColor ?? "#0f172a",
         textColor: (draft?.styleSettings?.chartDefaults as any)?.textColor ?? "#e2e8f0"
     });
+
+    // -----------------------------------------------------------------------------
+    // Cloud Synchronization
+    // -----------------------------------------------------------------------------
+    const isFirstMount = useRef(true);
+
+    // 1. Hydrate from Server on Mount
+    useEffect(() => {
+        if (userId === "guest") return;
+
+        loadAnalysisDraft("CRM").then((res) => {
+            if (res.success && res.draft) {
+                console.log("Hydrating CRM from server:", res.draft);
+                // If server has data, load it into store and local state
+                setDraft(userId, "CRM", res.draft);
+
+                // Update local state
+                if (res.draft.data) setRawData(res.draft.data as any);
+                if (res.draft.columns) setColumns(res.draft.columns);
+                if (res.draft.results) setCharts(res.draft.results as any);
+                if (res.draft.overrides) setChartOverrides(res.draft.overrides as any);
+
+                const style = res.draft.styleSettings as any;
+                if (style?.chartDefaults) setChartDefaults(style.chartDefaults);
+
+                if (res.draft.columnMapping) {
+                    setMapping({
+                        date: res.draft.columnMapping.date || "",
+                        grade: res.draft.columnMapping.grade || "",
+                        crm: res.draft.columnMapping.crm || "",
+                        element: res.draft.columnMapping.element || "",
+                        expected: res.draft.columnMapping.expected || "",
+                        sd: res.draft.columnMapping.sd || "",
+                    });
+                }
+                const opts = res.draft.filters?.options as any;
+                if (opts) {
+                    setOptions(prev => ({ ...prev, ...opts }));
+                }
+                if (res.draft.filters?.selectedElements) setSelectedElements(res.draft.filters.selectedElements as any);
+                if (res.draft.filters?.selectedCRMs) setSelectedCRMs(res.draft.filters.selectedCRMs as any);
+            }
+        });
+    }, [userId]);
+
+    // 2. Debounced Save to Server on Change
+    useEffect(() => {
+        if (isFirstMount.current) {
+            isFirstMount.current = false;
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            if (!userId || userId === "guest") return;
+
+            const currentDraft = {
+                data: rawData,
+                columns,
+                columnMapping: mapping,
+                filters: {
+                    selectedElements,
+                    selectedCRMs,
+                    options
+                },
+                styleSettings: {
+                    colors,
+                    chartDefaults
+                },
+                results: charts,
+                overrides: chartOverrides,
+                lastModified: Date.now()
+            };
+
+            console.log("Auto-saving CRM to server...");
+            saveAnalysisDraft("CRM", currentDraft).catch(err => console.error("Auto-save failed", err));
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [rawData, columns, mapping, selectedElements, selectedCRMs, options, colors, chartDefaults, charts, chartOverrides, userId]);
 
     // Save state to store on change
     useEffect(() => {
