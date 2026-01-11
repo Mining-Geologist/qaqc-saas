@@ -18,7 +18,7 @@ export async function syncClerkUsers() {
         let errors = 0;
 
         // 3. Upsert each user
-        for (const user of clerkUsers) {
+        for (const user of clerkUsers.data) {
             try {
                 const email = user.emailAddresses[0]?.emailAddress;
                 if (!email) continue;
