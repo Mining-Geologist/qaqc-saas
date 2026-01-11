@@ -21,58 +21,59 @@ export async function GET() {
         });
     }
 
+    // Test 1: Direct fetch to Supabase health endpoint
     try {
-        // Try to create client and list buckets
+        const healthUrl = `${supabaseUrl}/rest/v1/`;
+        const healthResponse = await fetch(healthUrl, {
+            headers: {
+                "apikey": supabaseKey,
+                "Authorization": `Bearer ${supabaseKey}`,
+            },
+        });
+        results.directFetchStatus = healthResponse.status;
+        results.directFetchOk = healthResponse.ok;
+    } catch (fetchError) {
+        results.directFetchError = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        results.directFetchCause = fetchError instanceof Error ? (fetchError as any).cause?.message : undefined;
+    }
+
+    // Test 2: Direct fetch to storage endpoint
+    try {
+        const storageUrl = `${supabaseUrl}/storage/v1/bucket`;
+        const storageResponse = await fetch(storageUrl, {
+            headers: {
+                "apikey": supabaseKey,
+                "Authorization": `Bearer ${supabaseKey}`,
+            },
+        });
+        results.storageFetchStatus = storageResponse.status;
+        results.storageFetchOk = storageResponse.ok;
+        if (storageResponse.ok) {
+            const buckets = await storageResponse.json();
+            results.buckets = buckets;
+        }
+    } catch (storageError) {
+        results.storageFetchError = storageError instanceof Error ? storageError.message : String(storageError);
+        results.storageFetchCause = storageError instanceof Error ? (storageError as any).cause?.message : undefined;
+    }
+
+    // Test 3: Try Supabase client
+    try {
         const supabase = createClient(supabaseUrl, supabaseKey);
 
         const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
 
         if (bucketsError) {
-            results.bucketsError = bucketsError.message;
+            results.clientBucketsError = bucketsError.message;
         } else {
-            results.buckets = buckets?.map(b => b.name) || [];
+            results.clientBuckets = buckets?.map(b => b.name) || [];
         }
-
-        // Try to list files in user-files bucket
-        const { data: files, error: filesError } = await supabase.storage
-            .from("user-files")
-            .list("", { limit: 1 });
-
-        if (filesError) {
-            results.filesError = filesError.message;
-        } else {
-            results.filesCount = files?.length || 0;
-        }
-
-        // Try a simple upload
-        const testData = Buffer.from("test");
-        const { error: uploadError } = await supabase.storage
-            .from("user-files")
-            .upload("_test/connection-test.txt", testData, {
-                contentType: "text/plain",
-                upsert: true,
-            });
-
-        if (uploadError) {
-            results.uploadError = uploadError.message;
-        } else {
-            results.uploadSuccess = true;
-
-            // Clean up test file
-            await supabase.storage.from("user-files").remove(["_test/connection-test.txt"]);
-        }
-
-        return NextResponse.json({
-            success: !bucketsError && !filesError && !uploadError,
-            ...results
-        });
-
     } catch (error) {
-        return NextResponse.json({
-            success: false,
-            error: error instanceof Error ? error.message : String(error),
-            cause: error instanceof Error ? (error as any).cause?.message : undefined,
-            ...results
-        });
+        results.clientError = error instanceof Error ? error.message : String(error);
     }
+
+    return NextResponse.json({
+        success: !!results.directFetchOk && !!results.storageFetchOk,
+        ...results
+    });
 }
