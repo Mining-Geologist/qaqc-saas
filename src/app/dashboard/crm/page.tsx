@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import {
 import { calculateCrmSummary, CrmSummary, CrmBounds } from "@/lib/mining-math";
 import { useAnalysisStore } from "@/stores/analysis-store";
 import { useUser } from "@clerk/nextjs";
+import { saveAnalysisDraft, loadAnalysisDraft } from "@/actions/analysis-persistence";
 
 export interface ChartDataPoint {
     index: number;
@@ -983,6 +984,95 @@ function CRMPageContent({ userId }: { userId: string }) {
             overrides: chartOverrides
         });
     }, [userId, selectedElements, selectedCRMs, options, chartDefaults, charts, chartOverrides, setDraft]);
+
+    // -----------------------------------------------------------------------------
+    // Cloud Synchronization (Database Persistence)
+    // -----------------------------------------------------------------------------
+    const isFirstMount = useRef(true);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Load from database on mount
+    useEffect(() => {
+        if (userId === "guest") return;
+
+        loadAnalysisDraft("CRM").then((res) => {
+            if (res.success && res.draft) {
+                console.log("Loaded CRM draft from database");
+                // Update local state with server data
+                if (res.draft.results) setCharts(res.draft.results as any);
+                if (res.draft.overrides) setChartOverrides(res.draft.overrides as any);
+                if (res.draft.columnMapping) {
+                    setMapping({
+                        date: res.draft.columnMapping.date || "",
+                        grade: res.draft.columnMapping.grade || "",
+                        crm: res.draft.columnMapping.crm || "",
+                        element: res.draft.columnMapping.element || "",
+                        expected: res.draft.columnMapping.expected || "",
+                        sd: res.draft.columnMapping.sd || "",
+                    });
+                }
+                if (res.draft.filters?.selectedElements) {
+                    setSelectedElements(res.draft.filters.selectedElements as string[]);
+                }
+                if (res.draft.filters?.selectedCRMs) {
+                    setSelectedCRMs(res.draft.filters.selectedCRMs as Record<string, string[]>);
+                }
+                const opts = res.draft.filters?.options as any;
+                if (opts) {
+                    setOptions(prev => ({ ...prev, ...opts }));
+                }
+                const style = res.draft.styleSettings as any;
+                if (style?.chartDefaults) {
+                    setChartDefaults(style.chartDefaults);
+                }
+            }
+        }).catch(err => console.error("Failed to load from DB:", err));
+    }, [userId]);
+
+    // Save to database on change (debounced)
+    useEffect(() => {
+        if (isFirstMount.current) {
+            isFirstMount.current = false;
+            return;
+        }
+        if (userId === "guest") return;
+
+        // Clear existing timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+
+        // Debounce save by 3 seconds
+        saveTimeoutRef.current = setTimeout(() => {
+            const draftToSave = {
+                data: null, // Don't save raw data to DB either - too large
+                columns: columns,
+                columnMapping: mapping,
+                filters: {
+                    selectedElements,
+                    selectedCRMs,
+                    options
+                },
+                styleSettings: {
+                    chartDefaults
+                },
+                results: charts,
+                overrides: chartOverrides,
+                lastModified: Date.now()
+            };
+
+            console.log("Saving CRM draft to database...");
+            saveAnalysisDraft("CRM", draftToSave).catch(err =>
+                console.error("Failed to save to DB:", err)
+            );
+        }, 3000);
+
+        return () => {
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+        };
+    }, [userId, columns, mapping, selectedElements, selectedCRMs, options, chartDefaults, charts, chartOverrides]);
 
     const handleOverrideChange = (key: string, newSettings: Partial<ChartOverrideSettings>) => {
         setChartOverrides(prev => ({
