@@ -18,6 +18,7 @@ export default function AdminDashboardPage() {
     const [stats, setStats] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const loadStats = () => {
         setIsLoading(true);
