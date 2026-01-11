@@ -1,16 +1,30 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { currentUser } from "@clerk/nextjs/server";
-
-// Initialize Supabase client with service role key (server-side only)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const BUCKET_NAME = "user-files";
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB default limit
+
+// Lazily create Supabase client to ensure env vars are available at runtime
+let supabaseClient: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+    if (!supabaseClient) {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        console.log("Supabase URL:", supabaseUrl ? "SET" : "MISSING");
+        console.log("Service Key:", supabaseServiceKey ? "SET (length: " + supabaseServiceKey.length + ")" : "MISSING");
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            throw new Error(`Missing Supabase configuration. URL: ${!!supabaseUrl}, Key: ${!!supabaseServiceKey}`);
+        }
+
+        supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    }
+    return supabaseClient;
+}
 
 export type UploadResult = {
     success: boolean;
@@ -33,9 +47,18 @@ export async function uploadUserFile(
     }
 
     try {
+        const supabase = getSupabaseClient();
+
         // Decode base64 to buffer
         const base64Data = fileData.replace(/^data:[^;]+;base64,/, "");
         const buffer = Buffer.from(base64Data, "base64");
+
+        console.log("Upload attempt:", {
+            userId: user.id,
+            toolType,
+            fileName,
+            bufferSize: buffer.length,
+        });
 
         // Check file size
         if (buffer.length > MAX_FILE_SIZE) {
@@ -58,6 +81,7 @@ export async function uploadUserFile(
             return { success: false, error: uploadError.message };
         }
 
+        console.log("Upload successful:", path);
         return {
             success: true,
             path,
@@ -65,7 +89,8 @@ export async function uploadUserFile(
         };
     } catch (error) {
         console.error("Upload error:", error);
-        return { success: false, error: "Failed to upload file" };
+        const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -86,6 +111,8 @@ export async function downloadUserFile(
     }
 
     try {
+        const supabase = getSupabaseClient();
+
         const { data, error } = await supabase.storage
             .from(BUCKET_NAME)
             .download(path);
@@ -123,6 +150,8 @@ export async function deleteUserFile(
     }
 
     try {
+        const supabase = getSupabaseClient();
+
         const { error } = await supabase.storage
             .from(BUCKET_NAME)
             .remove([path]);
@@ -154,6 +183,8 @@ export async function getUserStorageUsage(): Promise<{
     }
 
     try {
+        const supabase = getSupabaseClient();
+
         const { data, error } = await supabase.storage
             .from(BUCKET_NAME)
             .list(user.id, { sortBy: { column: "created_at", order: "desc" } });
