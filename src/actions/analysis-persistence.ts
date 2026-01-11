@@ -17,10 +17,22 @@ type DraftData = {
 };
 
 export async function saveAnalysisDraft(toolType: QaqcToolType, draft: DraftData) {
-    const user = await currentUser();
-    if (!user) return { success: false, error: "Unauthorized" };
+    const clerkUser = await currentUser();
+    if (!clerkUser) return { success: false, error: "Unauthorized" };
 
     try {
+        // Resolve internal DB user ID from Clerk ID
+        const user = await prisma.user.findUnique({
+            where: { clerkId: clerkUser.id },
+            select: { id: true }
+        });
+
+        if (!user) {
+            // Optional: Auto-create user if missing (JIT provisioning)
+            // For now, return error to keep logic strict, as Sync should handle this
+            return { success: false, error: "User profile not found. Please contact support." };
+        }
+
         await prisma.analysisDraft.upsert({
             where: {
                 userId_toolType: {
@@ -62,10 +74,20 @@ export async function saveAnalysisDraft(toolType: QaqcToolType, draft: DraftData
 }
 
 export async function loadAnalysisDraft(toolType: QaqcToolType) {
-    const user = await currentUser();
-    if (!user) return { success: false, error: "Unauthorized" };
+    const clerkUser = await currentUser();
+    if (!clerkUser) return { success: false, error: "Unauthorized" };
 
     try {
+        const user = await prisma.user.findUnique({
+            where: { clerkId: clerkUser.id },
+            select: { id: true }
+        });
+
+        if (!user) {
+            // No profile = no data
+            return { success: true, draft: null };
+        }
+
         const draft = await prisma.analysisDraft.findUnique({
             where: {
                 userId_toolType: {
