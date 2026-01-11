@@ -22,15 +22,33 @@ export async function saveAnalysisDraft(toolType: QaqcToolType, draft: DraftData
 
     try {
         // Resolve internal DB user ID from Clerk ID
-        const user = await prisma.user.findUnique({
+        let user = await prisma.user.findUnique({
             where: { clerkId: clerkUser.id },
             select: { id: true }
         });
 
         if (!user) {
-            // Optional: Auto-create user if missing (JIT provisioning)
-            // For now, return error to keep logic strict, as Sync should handle this
-            return { success: false, error: "User profile not found. Please contact support." };
+            console.log(`User ${clerkUser.id} not found in DB. performing JIT provisioning...`);
+            // JIT Provisioning: Create the user record on the fly
+            try {
+                const email = clerkUser.emailAddresses[0]?.emailAddress;
+                if (!email) return { success: false, error: "No email found in profile" };
+
+                user = await prisma.user.create({
+                    data: {
+                        clerkId: clerkUser.id,
+                        email: email,
+                        name: `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim(),
+                        avatarUrl: clerkUser.imageUrl,
+                        role: "USER"
+                    },
+                    select: { id: true }
+                });
+                console.log(`JIT Provisioning successful for ${email} (ID: ${user.id})`);
+            } catch (createError) {
+                console.error("JIT Provisioning failed:", createError);
+                return { success: false, error: "Failed to create user profile. Please try again." };
+            }
         }
 
         await prisma.analysisDraft.upsert({

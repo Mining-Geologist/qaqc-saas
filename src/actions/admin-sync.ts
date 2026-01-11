@@ -11,12 +11,20 @@ export async function syncClerkUsers() {
 
     try {
         if (!process.env.CLERK_SECRET_KEY) {
-            return { success: false, error: "Missing CLERK_SECRET_KEY in environment variables" };
+            console.error("Sync failed: Missing CLERK_SECRET_KEY");
+            return { success: false, error: "Configuration Error: CLERK_SECRET_KEY is missing from environment variables." };
         }
 
         // 2. Fetch limit 100 users (pagination needed for large scale, simplified for now)
         const client = await clerkClient();
-        const clerkUsers = await client.users.getUserList({ limit: 100 });
+
+        let clerkUsers;
+        try {
+            clerkUsers = await client.users.getUserList({ limit: 100 });
+        } catch (apiError) {
+            console.error("Clerk API Error:", apiError);
+            return { success: false, error: "Failed to connect to Clerk API. Check your Secret Key." };
+        }
 
         console.log(`Clerk API returned ${clerkUsers.data?.length ?? 0} users`);
         if (!clerkUsers.data || clerkUsers.data.length === 0) {
@@ -58,6 +66,6 @@ export async function syncClerkUsers() {
 
     } catch (error) {
         console.error("Sync error:", error);
-        return { success: false, error: "Failed to fetch users from Clerk" };
+        return { success: false, error: `Sync failed: ${error instanceof Error ? error.message : "Unknown error"}` };
     }
 }
