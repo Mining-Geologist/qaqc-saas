@@ -1035,12 +1035,14 @@ function CRMPageContent({ userId }: { userId: string }) {
 
                 // Download CSV from cloud storage if available
                 if (res.draft.filePath) {
-                    console.log("Downloading CSV from cloud:", res.draft.filePath);
+                    console.log("Found cloud file in draft:", res.draft.filePath);
                     setCloudFilePath(res.draft.filePath);
                     setCloudFileName(res.draft.fileName || "data.csv");
                     setIsLoadingCloud(true);
 
                     downloadUserFile(res.draft.filePath).then(downloadRes => {
+                        console.log("Download result:", downloadRes.success ? "Success" : "Failed", downloadRes.error);
+
                         if (downloadRes.success && downloadRes.data) {
                             // Decode base64 and parse CSV
                             const csvText = atob(downloadRes.data);
