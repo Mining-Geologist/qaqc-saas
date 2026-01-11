@@ -12,7 +12,7 @@ import {
     Users,
 } from "lucide-react";
 import { getUserProfile } from "@/actions/user";
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 
 const tools = [
     {

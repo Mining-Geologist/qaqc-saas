@@ -1,8 +1,7 @@
 "use server";
 
-import { clerkClient } from "@clerk/nextjs";
+import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import { db as prisma } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs";
 
 export async function syncClerkUsers() {
     // 1. Verify Admin (Basic check, in production use proper role check)
@@ -12,7 +11,8 @@ export async function syncClerkUsers() {
 
     try {
         // 2. Fetch limit 100 users (pagination needed for large scale, simplified for now)
-        const clerkUsers = await clerkClient.users.getUserList({ limit: 100 });
+        const client = await clerkClient();
+        const clerkUsers = await client.users.getUserList({ limit: 100 });
 
         let syncedCount = 0;
         let errors = 0;

@@ -886,13 +886,14 @@ function ChartWithControls({
 }
 
 // Main CRM Page Component
-const { user, isLoaded } = useUser();
-const userId = user?.id || "guest";
-// Force complete state reset when user changes by using userId as key for the content
-// Also prevent rendering with "guest" data while loading
-if (!isLoaded) return <div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>;
+export default function CRMPage() {
+    const { user, isLoaded } = useUser();
+    const userId = user?.id || "guest";
+    // Force complete state reset when user changes by using userId as key for the content
+    // Also prevent rendering with "guest" data while loading
+    if (!isLoaded) return <div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>;
 
-return <CRMPageContent key={userId} userId={userId} user={user} />;
+    return <CRMPageContent key={userId} userId={userId} user={user} />;
 }
 
 function CRMPageContent({ userId, user }: { userId: string, user: any }) {
