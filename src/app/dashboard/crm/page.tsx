@@ -1180,7 +1180,7 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
         return result;
     };
 
-    const runAnalysis = useCallback(() => {
+    const runAnalysis = () => {
         if (!rawData.length) {
             setError("No data loaded.");
             return;
