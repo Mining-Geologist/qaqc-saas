@@ -60,3 +60,21 @@ export async function updateUser(data: { firstName: string; lastName: string }) 
         return { success: false, error: "Failed to update profile" };
     }
 }
+
+export async function getUserProfile() {
+    const user = await currentUser();
+    if (!user) return null;
+
+    try {
+        const dbUser = await prisma.user.findUnique({
+            where: { clerkId: user.id },
+            include: {
+                subscription: true,
+            }
+        });
+        return dbUser;
+    } catch (error) {
+        console.error("Error fetching user profile:", error);
+        return null;
+    }
+}

@@ -30,7 +30,7 @@ import {
 } from "recharts";
 import { calculateCrmSummary, CrmSummary, CrmBounds } from "@/lib/mining-math";
 import { useAnalysisStore } from "@/stores/analysis-store";
-import { useAuthStore } from "@/stores/auth-store";
+import { useUser } from "@clerk/nextjs";
 
 export interface ChartDataPoint {
     index: number;
@@ -886,10 +886,16 @@ function ChartWithControls({
 }
 
 // Main CRM Page Component
-export default function CRMPage() {
-    const { currentUser } = useAuthStore();
-    const userId = currentUser?.id ?? "guest";
+const { user, isLoaded } = useUser();
+const userId = user?.id || "guest";
+// Force complete state reset when user changes by using userId as key for the content
+// Also prevent rendering with "guest" data while loading
+if (!isLoaded) return <div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>;
 
+return <CRMPageContent key={userId} userId={userId} user={user} />;
+}
+
+function CRMPageContent({ userId, user }: { userId: string, user: any }) {
     const { getDraft, setData, setColumnMapping, setDraft } = useAnalysisStore();
     const draft = getDraft(userId, "CRM");
 

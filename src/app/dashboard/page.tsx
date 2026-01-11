@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +11,8 @@ import {
     TrendingUp,
     Users,
 } from "lucide-react";
-import { useAuthStore } from "@/stores/auth-store";
+import { getUserProfile } from "@/actions/user";
+import { currentUser } from "@clerk/nextjs";
 
 const tools = [
     {
@@ -59,13 +58,17 @@ const PLAN_LABELS: Record<string, string> = {
     PRO_YEARLY: "Pro",
 };
 
-export default function DashboardPage() {
-    const { currentUser } = useAuthStore();
+export default async function DashboardPage() {
+    const user = await getUserProfile();
+    const clerkUser = await currentUser();
 
-    const userName = currentUser ? `${currentUser.firstName}` : "there";
-    const planLabel = currentUser ? PLAN_LABELS[currentUser.plan] || "Free" : "Free";
-    const teamSize = currentUser?.teamMembers?.length || 1;
-    const joinedDate = currentUser?.createdAt || "";
+    const userName = user?.name || clerkUser?.firstName || "there";
+    // @ts-ignore - Plan might be missing on type if not updated, but standard DB has it
+    const userPlan = user?.plan || "FREE";
+    const planLabel = PLAN_LABELS[userPlan] || "Free";
+    // @ts-ignore - Team members not yet in include
+    const teamSize = user?.teamMembers?.length || 1;
+    const joinedDate = user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "Today";
 
     return (
         <div className="space-y-8">
@@ -88,7 +91,7 @@ export default function DashboardPage() {
                         </CardTitle>
                         <Badge
                             className={
-                                currentUser?.plan === "FREE"
+                                userPlan === "FREE"
                                     ? "bg-slate-500/20 text-slate-400 border-slate-500/50"
                                     : "bg-emerald-500/20 text-emerald-400 border-emerald-500/50"
                             }
@@ -98,9 +101,9 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-white">
-                            {currentUser?.plan === "FREE" ? "Free Trial" : "Active"}
+                            {userPlan === "FREE" ? "Free Trial" : "Active"}
                         </div>
-                        {currentUser?.plan === "FREE" && (
+                        {userPlan === "FREE" && (
                             <Link href="/dashboard/settings" className="text-xs text-emerald-400 hover:underline">
                                 Upgrade to Pro →
                             </Link>
@@ -130,7 +133,7 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-white">
-                            {joinedDate || "Today"}
+                            {joinedDate}
                         </div>
                         <p className="text-xs text-slate-400">Welcome to QAQC Pro!</p>
                     </CardContent>

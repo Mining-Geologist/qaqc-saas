@@ -29,7 +29,7 @@ import {
 } from "recharts";
 import { analyzeBlanks, BlankDataPoint, BlankSummary } from "@/lib/mining-math/blanks";
 import { useAnalysisStore } from "@/stores/analysis-store";
-import { useAuthStore } from "@/stores/auth-store";
+import { useUser } from "@clerk/nextjs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import PptxGenJS from "pptxgenjs";
@@ -506,8 +506,15 @@ function BlankChartWithControls({
 // -----------------------------------------------------------------------------
 
 export default function BlanksPage() {
-    const { currentUser } = useAuthStore();
-    const userId = currentUser?.id ?? "guest";
+    const { user, isLoaded } = useUser();
+    const userId = user?.id || "guest";
+
+    if (!isLoaded) return <div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>;
+
+    return <BlanksPageContent key={userId} userId={userId} />;
+}
+
+function BlanksPageContent({ userId }: { userId: string }) {
     const { getDraft, setData, setColumnMapping, setDraft, setFilters: setStoreFilters } = useAnalysisStore();
     const draft = getDraft(userId, "BLANKS");
 

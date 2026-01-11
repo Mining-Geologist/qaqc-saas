@@ -2,8 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, CreditCard, TrendingUp, Activity, DollarSign, ArrowUpRight, UserPlus } from "lucide-react";
-import { useAuthStore } from "@/stores/auth-store";
+import { Users, CreditCard, TrendingUp, Activity, DollarSign, ArrowUpRight, UserPlus, RefreshCw } from "lucide-react";
+import { getAdminStats } from "@/actions/admin";
+import { syncClerkUsers } from "@/actions/admin-sync";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 const PLAN_REVENUE: Record<string, number> = {
     FREE: 0,
@@ -12,28 +15,52 @@ const PLAN_REVENUE: Record<string, number> = {
 };
 
 export default function AdminDashboardPage() {
-    const { users } = useAuthStore();
+    const [stats, setStats] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false);
 
-    const totalUsers = users.length;
-    const activeUsers = users.filter((u) => u.status === "active").length;
-    const paidUsers = users.filter((u) => u.plan !== "FREE").length;
-    const totalRevenue = users.reduce((sum, u) => sum + (PLAN_REVENUE[u.plan] || 0), 0);
+    const loadStats = () => {
+        getAdminStats().then((data) => {
+            setStats(data);
+            setIsLoading(false);
+        });
+    };
 
-    const freeCount = users.filter((u) => u.plan === "FREE").length;
-    const proMonthlyCount = users.filter((u) => u.plan === "PRO_MONTHLY").length;
-    const proYearlyCount = users.filter((u) => u.plan === "PRO_YEARLY").length;
+    useEffect(() => {
+        loadStats();
+    }, []);
 
-    const planDistribution = [
-        { plan: "Free", count: freeCount, percentage: totalUsers ? Math.round((freeCount / totalUsers) * 100) : 0 },
-        { plan: "Pro Monthly", count: proMonthlyCount, percentage: totalUsers ? Math.round((proMonthlyCount / totalUsers) * 100) : 0 },
-        { plan: "Pro Yearly", count: proYearlyCount, percentage: totalUsers ? Math.round((proYearlyCount / totalUsers) * 100) : 0 },
+    const handleSync = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await syncClerkUsers();
+            if (res.success) {
+                alert(`Synced ${res.synced} users successfully.`);
+                loadStats();
+            } else {
+                alert(`Sync failed: ${res.error}`);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Sync error occurred");
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    if (isLoading || !stats) {
+        return <div className="text-white">Loading stats...</div>;
+    }
+
+    const { totalUsers, activeUsers, paidUsers, totalRevenue, planDistribution, recentUsers } = stats;
+
+    const planData = [
+        { plan: "Free", count: planDistribution.free, percentage: totalUsers ? Math.round((planDistribution.free / totalUsers) * 100) : 0 },
+        { plan: "Pro Monthly", count: planDistribution.proMonthly, percentage: totalUsers ? Math.round((planDistribution.proMonthly / totalUsers) * 100) : 0 },
+        { plan: "Pro Yearly", count: planDistribution.proYearly, percentage: totalUsers ? Math.round((planDistribution.proYearly / totalUsers) * 100) : 0 },
     ];
 
-    const recentUsers = [...users]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 5);
-
-    const stats = [
+    const statsGrid = [
         {
             title: "Total Users",
             value: totalUsers.toString(),
@@ -62,14 +89,24 @@ export default function AdminDashboardPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-2xl font-bold text-white mb-2">Admin Overview</h1>
-                <p className="text-slate-400">Monitor your SaaS metrics and user activity</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-white mb-2">Admin Overview</h1>
+                    <p className="text-slate-400">Monitor your SaaS metrics and user activity (Live DB)</p>
+                </div>
+                <Button
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"
+                >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                    {isSyncing ? "Syncing..." : "Sync Users"}
+                </Button>
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat) => (
+                {statsGrid.map((stat) => (
                     <Card key={stat.title} className="bg-slate-900/50 border-slate-800">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium text-slate-400">
@@ -99,7 +136,7 @@ export default function AdminDashboardPage() {
                             <p className="text-slate-400 text-center py-8">No users yet</p>
                         ) : (
                             <div className="space-y-4">
-                                {planDistribution.map((item) => (
+                                {planData.map((item) => (
                                     <div key={item.plan} className="space-y-2">
                                         <div className="flex items-center justify-between">
                                             <span className="text-white font-medium">{item.plan}</span>
@@ -108,10 +145,10 @@ export default function AdminDashboardPage() {
                                         <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
                                             <div
                                                 className={`h-full rounded-full transition-all ${item.plan === "Free"
-                                                        ? "bg-slate-500"
-                                                        : item.plan === "Pro Monthly"
-                                                            ? "bg-purple-500"
-                                                            : "bg-pink-500"
+                                                    ? "bg-slate-500"
+                                                    : item.plan === "Pro Monthly"
+                                                        ? "bg-purple-500"
+                                                        : "bg-pink-500"
                                                     }`}
                                                 style={{ width: `${item.percentage}%` }}
                                             />
@@ -139,10 +176,10 @@ export default function AdminDashboardPage() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {recentUsers.map((user) => (
+                                {recentUsers.map((user: any) => (
                                     <div key={user.id} className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-white font-medium">{user.firstName} {user.lastName}</p>
+                                            <p className="text-white font-medium">{user.name || "Unknown User"}</p>
                                             <p className="text-slate-400 text-sm">{user.email}</p>
                                         </div>
                                         <div className="text-right">
