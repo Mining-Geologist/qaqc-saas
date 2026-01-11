@@ -73,22 +73,17 @@ export function correlation(x: number[], y: number[]): number {
  * Calculate rolling (moving) mean
  */
 export function rollingMean(values: number[], window: number): (number | null)[] {
-    if (window <= 0) {
-        throw new Error("Window size must be positive");
+    if (window <= 0 || window > values.length) {
+        throw new Error("Invalid window size");
     }
-    // If window is larger than data, cap it to data length (or return all nulls if empty)
-    if (values.length === 0) {
-        return [];
-    }
-    const effectiveWindow = Math.min(window, values.length);
 
     const result: (number | null)[] = [];
 
     for (let i = 0; i < values.length; i++) {
-        if (i < effectiveWindow - 1) {
+        if (i < window - 1) {
             result.push(null); // Not enough data yet
         } else {
-            const windowValues = values.slice(i - effectiveWindow + 1, i + 1);
+            const windowValues = values.slice(i - window + 1, i + 1);
             result.push(mean(windowValues));
         }
     }

@@ -27,7 +27,6 @@ import {
     Tooltip,
     ReferenceLine,
     Legend,
-    Cell,
 } from "recharts";
 import { calculateCrmSummary, CrmSummary, CrmBounds } from "@/lib/mining-math";
 import { useAnalysisStore } from "@/stores/analysis-store";
@@ -1294,10 +1293,7 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
                 </div>
                 <div className="flex items-center gap-4">
                     {/* Saving Indicator */}
-                    <div className="text-sm font-medium flex items-center gap-2">
-                        <span className="text-xs text-slate-600 bg-slate-900 px-2 py-1 rounded">
-                            {userId === "guest" ? "Guest Mode" : `User: ${userId.slice(0, 8)}...`}
-                        </span>
+                    <div className="text-sm font-medium">
                         {isFirstMount.current ? (
                             <span className="text-slate-500">Loading...</span>
                         ) : saveStatus === "saving" ? (
@@ -1546,5 +1542,3 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
         </div >
     );
 }
-
-

@@ -6,31 +6,17 @@ import { db as prisma } from "@/lib/db";
 export async function syncClerkUsers() {
     // 1. Verify Admin (Basic check, in production use proper role check)
     const admin = await currentUser();
-
-    console.log("Sync User Auth Identity:", admin?.id, admin?.emailAddresses?.[0]?.emailAddress);
-
     // Allow for now if authenticated, or check against env list
-    if (!admin) {
-        console.error("Sync Unauthorized: No currentUser found");
-        return { success: false, error: "Unauthorized: No active session found." };
-    }
+    if (!admin) return { success: false, error: "Unauthorized" };
 
     try {
         if (!process.env.CLERK_SECRET_KEY) {
-            console.error("Sync failed: Missing CLERK_SECRET_KEY");
-            return { success: false, error: "Configuration Error: CLERK_SECRET_KEY is missing from environment variables." };
+            return { success: false, error: "Missing CLERK_SECRET_KEY in environment variables" };
         }
 
         // 2. Fetch limit 100 users (pagination needed for large scale, simplified for now)
         const client = await clerkClient();
-
-        let clerkUsers;
-        try {
-            clerkUsers = await client.users.getUserList({ limit: 100 });
-        } catch (apiError) {
-            console.error("Clerk API Error:", apiError);
-            return { success: false, error: "Failed to connect to Clerk API. Check your Secret Key." };
-        }
+        const clerkUsers = await client.users.getUserList({ limit: 100 });
 
         console.log(`Clerk API returned ${clerkUsers.data?.length ?? 0} users`);
         if (!clerkUsers.data || clerkUsers.data.length === 0) {
@@ -72,6 +58,6 @@ export async function syncClerkUsers() {
 
     } catch (error) {
         console.error("Sync error:", error);
-        return { success: false, error: `Sync failed: ${error instanceof Error ? error.message : "Unknown error"}` };
+        return { success: false, error: "Failed to fetch users from Clerk" };
     }
 }

@@ -26,7 +26,6 @@ import {
     Tooltip,
     ReferenceLine,
     Legend,
-    Cell,
 } from "recharts";
 import { analyzeBlanks, BlankDataPoint, BlankSummary } from "@/lib/mining-math/blanks";
 import { useAnalysisStore } from "@/stores/analysis-store";
@@ -1189,5 +1188,3 @@ function BlanksPageContent({ userId }: { userId: string }) {
         </div>
     );
 }
-
-
