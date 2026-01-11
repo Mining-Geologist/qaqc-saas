@@ -1300,224 +1300,250 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
             setIsProcessing(false);
         }
     }, [rawData, mapping, selectedElements, selectedCRMs, options, getCRMsForElement]);
-                )
-}
-            </div >
-
-    { error && (
-        <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <p className="text-red-400">{error}</p>
-        </div>
-    )}
-
-<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-    <TabsList className="bg-slate-900 border border-slate-800">
-        <TabsTrigger value="setup" className="data-[state=active]:bg-slate-800">
-            <Upload className="w-4 h-4 mr-2" />Setup
-        </TabsTrigger>
-        <TabsTrigger value="charts" className="data-[state=active]:bg-slate-800">
-            <BarChart3 className="w-4 h-4 mr-2" />Charts
-            {charts.length > 0 && <Badge className="ml-2 bg-emerald-500/20 text-emerald-400">{charts.length}</Badge>}
-        </TabsTrigger>
-        <TabsTrigger value="summary" className="data-[state=active]:bg-slate-800">Summary</TabsTrigger>
-    </TabsList>
-
-    {/* SETUP TAB */}
-    <TabsContent value="setup" className="space-y-6">
-        <Card className="bg-slate-900/50 border-slate-800">
-            <CardHeader>
-                <CardTitle className="text-white">Upload Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center gap-4">
-                    <Input type="file" accept=".csv" onChange={handleFileUpload} className="bg-slate-800 border-slate-700 text-white file:bg-emerald-500 file:text-white file:border-0" />
-                    {rawData.length > 0 && <Badge className="bg-emerald-500/20 text-emerald-400">{rawData.length} rows</Badge>}
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-white">CRM Analysis</h1>
+                    <p className="text-slate-400">Control Reference Material tracking with ±2/3σ control limits</p>
                 </div>
-            </CardContent>
-        </Card>
 
-        {columns.length > 0 && (
-            <>
-                <Card className="bg-slate-900/50 border-slate-800">
-                    <CardHeader><CardTitle className="text-white">Column Mapping</CardTitle></CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {["date", "grade", "crm", "element", "expected", "sd"].map((key) => (
-                                <div key={key} className="space-y-2">
-                                    <Label className="text-slate-300 capitalize">{key} Column {["grade", "crm", "element"].includes(key) && "*"}</Label>
-                                    <Select value={mapping[key as keyof typeof mapping]} onValueChange={(v) => handleMappingChange(key, v)}>
-                                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                            <SelectValue placeholder="Select column" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-slate-900 border-slate-800">
-                                            {columns.map((col) => <SelectItem key={col} value={col} className="text-white">{col}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            ))}
+                <div className="flex items-center gap-4">
+                    {/* Saving Indicator */}
+                    <div className="text-sm font-medium">
+                        {isFirstMount.current ? (
+                            <span className="text-slate-500">Loading...</span>
+                        ) : (
+                            <span className="text-emerald-500 flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                Cloud Sync Active
+                            </span>
+                        )}
+                    </div>
+
+                    {charts.length > 0 && (
+                        <div className="flex items-center gap-3">
+                            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
+                                {charts.length} chart{charts.length !== 1 ? "s" : ""} generated
+                            </Badge>
+                            <ExportDialog charts={charts} />
                         </div>
-                    </CardContent>
-                </Card>
+                    )}
+                </div>
+            </div>    {error && (
+                <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-400">{error}</p>
+                </div>
+            )}
 
-                {uniqueElements.length > 0 && (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+                <TabsList className="bg-slate-900 border border-slate-800">
+                    <TabsTrigger value="setup" className="data-[state=active]:bg-slate-800">
+                        <Upload className="w-4 h-4 mr-2" />Setup
+                    </TabsTrigger>
+                    <TabsTrigger value="charts" className="data-[state=active]:bg-slate-800">
+                        <BarChart3 className="w-4 h-4 mr-2" />Charts
+                        {charts.length > 0 && <Badge className="ml-2 bg-emerald-500/20 text-emerald-400">{charts.length}</Badge>}
+                    </TabsTrigger>
+                    <TabsTrigger value="summary" className="data-[state=active]:bg-slate-800">Summary</TabsTrigger>
+                </TabsList>
+
+                {/* SETUP TAB */}
+                <TabsContent value="setup" className="space-y-6">
                     <Card className="bg-slate-900/50 border-slate-800">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle className="text-white">Select Elements</CardTitle>
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm" onClick={selectAll} className="border-slate-700 text-slate-300 hover:text-white">
-                                    Select All
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={selectNone} className="border-slate-700 text-slate-300 hover:text-white">
-                                    Clear All
-                                </Button>
-                            </div>
+                        <CardHeader>
+                            <CardTitle className="text-white">Upload Data</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex flex-wrap gap-2">
-                                {uniqueElements.map((element) => (
-                                    <Button key={element} variant={selectedElements.includes(element) ? "default" : "outline"} size="sm" onClick={() => toggleElement(element)}
-                                        className={selectedElements.includes(element) ? "bg-emerald-500 hover:bg-emerald-600" : "border-slate-700 text-slate-300"}>
-                                        {element}
-                                    </Button>
-                                ))}
+                            <div className="flex items-center gap-4">
+                                <Input type="file" accept=".csv" onChange={handleFileUpload} className="bg-slate-800 border-slate-700 text-white file:bg-emerald-500 file:text-white file:border-0" />
+                                {rawData.length > 0 && <Badge className="bg-emerald-500/20 text-emerald-400">{rawData.length} rows</Badge>}
                             </div>
-                            {selectedElements.map((element) => (
-                                <div key={element} className="mt-4 p-4 bg-slate-800/50 rounded-lg">
-                                    <h4 className="text-white font-medium mb-2">{element} - Select CRMs</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {getCRMsForElement(element).map((crm) => (
-                                            <Button key={crm} variant={(selectedCRMs[element] || []).includes(crm) ? "default" : "outline"} size="sm" onClick={() => toggleCRM(element, crm)}
-                                                className={(selectedCRMs[element] || []).includes(crm) ? "bg-blue-500 hover:bg-blue-600" : "border-slate-600 text-slate-400"}>
-                                                {crm}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
                         </CardContent>
                     </Card>
-                )}
 
-                <Card className="bg-slate-900/50 border-slate-800">
-                    <CardHeader><CardTitle className="text-white flex items-center gap-2"><Settings2 className="w-5 h-5" />Analysis Options</CardTitle></CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-white">Use Mean as Center</Label>
-                                <Switch checked={options.useMean} onCheckedChange={(c) => setOptions({ ...options, useMean: c })} />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <Label className="text-white">Use Certificate SD</Label>
-                                <Switch checked={options.useExpectedSD} onCheckedChange={(c) => setOptions({ ...options, useExpectedSD: c })} />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <Label className="text-white">Show Moving Mean</Label>
-                                <Switch checked={options.showMovingMean} onCheckedChange={(c) => setOptions({ ...options, showMovingMean: c })} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-slate-300">1st SD Threshold</Label>
-                                <Input type="number" value={options.multiplier2SD} onChange={(e) => setOptions({ ...options, multiplier2SD: parseFloat(e.target.value) || 2 })} className="bg-slate-800 border-slate-700 text-white" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-slate-300">2nd SD Threshold</Label>
-                                <Input type="number" value={options.multiplier3SD} onChange={(e) => setOptions({ ...options, multiplier3SD: parseFloat(e.target.value) || 3 })} className="bg-slate-800 border-slate-700 text-white" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Button onClick={runAnalysis} disabled={isProcessing || !mapping.grade || !mapping.crm || !mapping.element || selectedElements.length === 0}
-                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50">
-                    <Play className="w-4 h-4 mr-2" />
-                    {isProcessing ? "Processing..." : selectedElements.length > 0 ? `Run Analysis (${selectedElements.length} element${selectedElements.length !== 1 ? "s" : ""})` : "Run Analysis"}
-                </Button>
-                {selectedElements.length === 0 && mapping.element && (
-                    <p className="text-yellow-400 text-sm">Please select at least one element above to run analysis</p>
-                )}
-                {!mapping.element && (
-                    <p className="text-yellow-400 text-sm">Please map the Element column to see available elements</p>
-                )}
-            </>
-        )}
-    </TabsContent>
-
-    {/* CHARTS TAB */}
-    <TabsContent value="charts" className="space-y-8">
-        {/* Global Settings */}
-        {charts.length > 0 && (
-            <GlobalChartSettingsPanel
-                defaults={chartDefaults}
-                onApply={setChartDefaults}
-            />
-        )}
-
-        {charts.length === 0 ? (
-            <Card className="bg-slate-900/50 border-slate-800">
-                <CardContent className="py-12 text-center">
-                    <BarChart3 className="w-12 h-12 mx-auto text-slate-600 mb-4" />
-                    <p className="text-slate-400">No charts yet. Select elements and run the analysis.</p>
-                </CardContent>
-            </Card>
-        ) : (
-            charts.map((chart, idx) => {
-                const uniqueKey = `${chart.crm}-${chart.element}`;
-                return (
-                    <ChartWithControls
-                        key={uniqueKey}
-                        chart={chart}
-                        idx={idx}
-                        globalColors={colors}
-                        defaults={chartDefaults}
-                        showMovingMean={options.showMovingMean}
-                        overrides={chartOverrides[uniqueKey]}
-                        onOverrideChange={(settings) => handleOverrideChange(uniqueKey, settings)}
-                    />
-                );
-            })
-        )}
-    </TabsContent>
-
-    {/* SUMMARY TAB */}
-    <TabsContent value="summary" className="space-y-6">
-        {allSummaries.length === 0 ? (
-            <Card className="bg-slate-900/50 border-slate-800">
-                <CardContent className="py-12 text-center">
-                    <p className="text-slate-400">No summary data yet.</p>
-                </CardContent>
-            </Card>
-        ) : (
-            <Card className="bg-slate-900/50 border-slate-800">
-                <CardHeader><CardTitle className="text-white">Combined Summary Table</CardTitle></CardHeader>
-                <CardContent>
-                    <div className="overflow-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="border-slate-800">
-                                    {Object.keys(allSummaries[0] || {}).map((key) => (
-                                        <TableHead key={key} className="text-slate-400">{key}</TableHead>
-                                    ))}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {allSummaries.map((row, idx) => (
-                                    <TableRow key={idx} className="border-slate-800">
-                                        {Object.values(row).map((value, i) => (
-                                            <TableCell key={i} className="text-slate-300">{String(value)}</TableCell>
+                    {columns.length > 0 && (
+                        <>
+                            <Card className="bg-slate-900/50 border-slate-800">
+                                <CardHeader><CardTitle className="text-white">Column Mapping</CardTitle></CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {["date", "grade", "crm", "element", "expected", "sd"].map((key) => (
+                                            <div key={key} className="space-y-2">
+                                                <Label className="text-slate-300 capitalize">{key} Column {["grade", "crm", "element"].includes(key) && "*"}</Label>
+                                                <Select value={mapping[key as keyof typeof mapping]} onValueChange={(v) => handleMappingChange(key, v)}>
+                                                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                                                        <SelectValue placeholder="Select column" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-slate-900 border-slate-800">
+                                                        {columns.map((col) => <SelectItem key={col} value={col} className="text-white">{col}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         ))}
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <Button variant="outline" className="mt-4 border-slate-700 text-slate-300">
-                        <Download className="w-4 h-4 mr-2" />Download CSV
-                    </Button>
-                </CardContent>
-            </Card>
-        )}
-    </TabsContent>
-</Tabs>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {uniqueElements.length > 0 && (
+                                <Card className="bg-slate-900/50 border-slate-800">
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <CardTitle className="text-white">Select Elements</CardTitle>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="sm" onClick={selectAll} className="border-slate-700 text-slate-300 hover:text-white">
+                                                Select All
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={selectNone} className="border-slate-700 text-slate-300 hover:text-white">
+                                                Clear All
+                                            </Button>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-wrap gap-2">
+                                            {uniqueElements.map((element) => (
+                                                <Button key={element} variant={selectedElements.includes(element) ? "default" : "outline"} size="sm" onClick={() => toggleElement(element)}
+                                                    className={selectedElements.includes(element) ? "bg-emerald-500 hover:bg-emerald-600" : "border-slate-700 text-slate-300"}>
+                                                    {element}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                        {selectedElements.map((element) => (
+                                            <div key={element} className="mt-4 p-4 bg-slate-800/50 rounded-lg">
+                                                <h4 className="text-white font-medium mb-2">{element} - Select CRMs</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {getCRMsForElement(element).map((crm) => (
+                                                        <Button key={crm} variant={(selectedCRMs[element] || []).includes(crm) ? "default" : "outline"} size="sm" onClick={() => toggleCRM(element, crm)}
+                                                            className={(selectedCRMs[element] || []).includes(crm) ? "bg-blue-500 hover:bg-blue-600" : "border-slate-600 text-slate-400"}>
+                                                            {crm}
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            <Card className="bg-slate-900/50 border-slate-800">
+                                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Settings2 className="w-5 h-5" />Analysis Options</CardTitle></CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-white">Use Mean as Center</Label>
+                                            <Switch checked={options.useMean} onCheckedChange={(c) => setOptions({ ...options, useMean: c })} />
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-white">Use Certificate SD</Label>
+                                            <Switch checked={options.useExpectedSD} onCheckedChange={(c) => setOptions({ ...options, useExpectedSD: c })} />
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-white">Show Moving Mean</Label>
+                                            <Switch checked={options.showMovingMean} onCheckedChange={(c) => setOptions({ ...options, showMovingMean: c })} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-300">1st SD Threshold</Label>
+                                            <Input type="number" value={options.multiplier2SD} onChange={(e) => setOptions({ ...options, multiplier2SD: parseFloat(e.target.value) || 2 })} className="bg-slate-800 border-slate-700 text-white" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-300">2nd SD Threshold</Label>
+                                            <Input type="number" value={options.multiplier3SD} onChange={(e) => setOptions({ ...options, multiplier3SD: parseFloat(e.target.value) || 3 })} className="bg-slate-800 border-slate-700 text-white" />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Button onClick={runAnalysis} disabled={isProcessing || !mapping.grade || !mapping.crm || !mapping.element || selectedElements.length === 0}
+                                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50">
+                                <Play className="w-4 h-4 mr-2" />
+                                {isProcessing ? "Processing..." : selectedElements.length > 0 ? `Run Analysis (${selectedElements.length} element${selectedElements.length !== 1 ? "s" : ""})` : "Run Analysis"}
+                            </Button>
+                            {selectedElements.length === 0 && mapping.element && (
+                                <p className="text-yellow-400 text-sm">Please select at least one element above to run analysis</p>
+                            )}
+                            {!mapping.element && (
+                                <p className="text-yellow-400 text-sm">Please map the Element column to see available elements</p>
+                            )}
+                        </>
+                    )}
+                </TabsContent>
+
+                {/* CHARTS TAB */}
+                <TabsContent value="charts" className="space-y-8">
+                    {/* Global Settings */}
+                    {charts.length > 0 && (
+                        <GlobalChartSettingsPanel
+                            defaults={chartDefaults}
+                            onApply={setChartDefaults}
+                        />
+                    )}
+
+                    {charts.length === 0 ? (
+                        <Card className="bg-slate-900/50 border-slate-800">
+                            <CardContent className="py-12 text-center">
+                                <BarChart3 className="w-12 h-12 mx-auto text-slate-600 mb-4" />
+                                <p className="text-slate-400">No charts yet. Select elements and run the analysis.</p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        charts.map((chart, idx) => {
+                            const uniqueKey = `${chart.crm}-${chart.element}`;
+                            return (
+                                <ChartWithControls
+                                    key={uniqueKey}
+                                    chart={chart}
+                                    idx={idx}
+                                    globalColors={colors}
+                                    defaults={chartDefaults}
+                                    showMovingMean={options.showMovingMean}
+                                    overrides={chartOverrides[uniqueKey]}
+                                    onOverrideChange={(settings) => handleOverrideChange(uniqueKey, settings)}
+                                />
+                            );
+                        })
+                    )}
+                </TabsContent>
+
+                {/* SUMMARY TAB */}
+                <TabsContent value="summary" className="space-y-6">
+                    {allSummaries.length === 0 ? (
+                        <Card className="bg-slate-900/50 border-slate-800">
+                            <CardContent className="py-12 text-center">
+                                <p className="text-slate-400">No summary data yet.</p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Card className="bg-slate-900/50 border-slate-800">
+                            <CardHeader><CardTitle className="text-white">Combined Summary Table</CardTitle></CardHeader>
+                            <CardContent>
+                                <div className="overflow-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="border-slate-800">
+                                                {Object.keys(allSummaries[0] || {}).map((key) => (
+                                                    <TableHead key={key} className="text-slate-400">{key}</TableHead>
+                                                ))}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {allSummaries.map((row, idx) => (
+                                                <TableRow key={idx} className="border-slate-800">
+                                                    {Object.values(row).map((value, i) => (
+                                                        <TableCell key={i} className="text-slate-300">{String(value)}</TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                                <Button variant="outline" className="mt-4 border-slate-700 text-slate-300">
+                                    <Download className="w-4 h-4 mr-2" />Download CSV
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+                </TabsContent>
+            </Tabs>
         </div >
     );
 }
