@@ -115,8 +115,63 @@ export const useAnalysisStore = create<AnalysisStore>()(
         }),
         {
             name: "qaqc-analysis-drafts",
-            storage: createJSONStorage(() => localStorage),
-            partialize: (state) => ({ userDrafts: state.userDrafts }),
+            storage: {
+                getItem: (name) => {
+                    try {
+                        const value = localStorage.getItem(name);
+                        return value ? JSON.parse(value) : null;
+                    } catch (e) {
+                        console.error("Failed to read from localStorage:", e);
+                        return null;
+                    }
+                },
+                setItem: (name, value) => {
+                    try {
+                        localStorage.setItem(name, JSON.stringify(value));
+                    } catch (e) {
+                        // Quota exceeded - clear old data and try again
+                        console.warn("localStorage quota exceeded, clearing old drafts...", e);
+                        try {
+                            localStorage.removeItem(name);
+                            localStorage.setItem(name, JSON.stringify(value));
+                        } catch (e2) {
+                            console.error("Still failed after clearing, drafts will not persist:", e2);
+                        }
+                    }
+                },
+                removeItem: (name) => {
+                    try {
+                        localStorage.removeItem(name);
+                    } catch (e) {
+                        console.error("Failed to remove from localStorage:", e);
+                    }
+                },
+            },
+            // IMPORTANT: Exclude raw `data` from persistence to avoid quota issues
+            // Raw CSV data can be very large - only store config/settings
+            partialize: (state) => ({
+                userDrafts: Object.fromEntries(
+                    Object.entries(state.userDrafts).map(([userId, tools]) => [
+                        userId,
+                        Object.fromEntries(
+                            Object.entries(tools || {}).map(([toolType, draft]) => [
+                                toolType,
+                                {
+                                    // Exclude `data` field - it's too large for localStorage
+                                    columns: draft?.columns || [],
+                                    columnMapping: draft?.columnMapping || {},
+                                    filters: draft?.filters || {},
+                                    styleSettings: draft?.styleSettings || {},
+                                    // Keep results but limit size
+                                    results: draft?.results,
+                                    overrides: draft?.overrides || {},
+                                    lastModified: draft?.lastModified || Date.now(),
+                                },
+                            ])
+                        ),
+                    ])
+                ),
+            }),
         }
     )
 );
