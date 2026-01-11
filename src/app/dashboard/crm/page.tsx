@@ -1044,7 +1044,7 @@ function CRMPageContent({ userId }: { userId: string }) {
                 },
             });
         },
-        [setData]
+        [setData, userId]
     );
 
     const handleMappingChange = (key: string, value: string) => {
