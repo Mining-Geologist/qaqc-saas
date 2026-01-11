@@ -628,16 +628,12 @@ function BlanksPageContent({ userId }: { userId: string }) {
     }, [userId]);
 
     // 2. Debounced Save to Server on Change
-    const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-    const [saveErrorMsg, setSaveErrorMsg] = useState("");
-
     useEffect(() => {
         if (isFirstMount.current) {
             isFirstMount.current = false;
             return;
         }
 
-        setSaveStatus("saving");
         const timer = setTimeout(() => {
             if (!userId || userId === "guest") return;
 
@@ -645,38 +641,32 @@ function BlanksPageContent({ userId }: { userId: string }) {
                 data: rawData,
                 columns,
                 columnMapping: mapping,
-                filters: {
-                    advanced: filters,
-                    selectedElements: filters.selectedElements
-                },
+                filters: { advanced: filters },
                 styleSettings: { chartDefaults },
                 results: charts,
                 overrides: chartOverrides,
                 lastModified: Date.now()
             };
 
-            console.log("Auto-saving Blanks to server...");
-            saveAnalysisDraft("BLANKS", currentDraft)
-                .then(res => {
-                    if (res.success) {
-                        setSaveStatus("saved");
-                        setTimeout(() => setSaveStatus("idle"), 2000);
-                    } else {
-                        setSaveStatus("error");
-                        setSaveErrorMsg(res.error || "Unknown save error");
-                        console.error("Save failed:", res.error);
-                    }
-                })
-                .catch(err => {
-                    setSaveStatus("error");
-                    setSaveErrorMsg(err.message);
-                    console.error("Auto-save failed", err);
-                });
+            console.log("Auto-saving BLANKS to server...");
+            saveAnalysisDraft("BLANKS", currentDraft).catch(err => console.error("Auto-save failed", err));
         }, 2000);
 
         return () => clearTimeout(timer);
-    }, [rawData, columns, mapping, filters, charts, chartOverrides, chartDefaults, userId]);
+    }, [rawData, columns, mapping, filters, chartDefaults, charts, chartOverrides, userId]);
 
+    // Persistence Effect
+    useEffect(() => {
+        setDraft(userId, "BLANKS", {
+            filters: { advanced: filters }, // Store complex filter object
+            styleSettings: { chartDefaults },
+            results: charts,
+            overrides: chartOverrides
+        });
+    }, [userId, filters, chartDefaults, charts, chartOverrides, setDraft]);
+
+
+    // Handlers
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;

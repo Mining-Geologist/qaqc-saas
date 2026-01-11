@@ -966,8 +966,6 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
     // -----------------------------------------------------------------------------
     // Cloud Synchronization
     // -----------------------------------------------------------------------------
-    const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-    const [saveErrorMsg, setSaveErrorMsg] = useState("");
     const isFirstMount = useRef(true);
 
     // 1. Hydrate from Server on Mount
@@ -1096,30 +1094,32 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
         return Array.from(crms).sort();
     }, [rawData, mapping.crm, mapping.element]);
 
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        setError(null);
+    const handleFileUpload = useCallback(
+        (event: React.ChangeEvent<HTMLInputElement>) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            setError(null);
 
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            dynamicTyping: true,
-            complete: (results) => {
-                const parsedData = results.data as Record<string, unknown>[];
-                const cols = results.meta.fields ?? [];
-                setRawData(parsedData);
-                setColumns(cols);
-                setData(userId, "CRM", parsedData);
-                setSelectedElements([]);
-                setSelectedCRMs({});
-                setCharts([]);
-            },
-            error: (error) => {
-                setError(`Failed to parse CSV: ${error.message}`);
-            },
-        });
-    };
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    const parsedData = results.data as Record<string, unknown>[];
+                    const cols = results.meta.fields ?? [];
+                    setRawData(parsedData);
+                    setColumns(cols);
+                    setData(userId, "CRM", parsedData);
+                    setSelectedElements([]);
+                    setSelectedCRMs({});
+                    setCharts([]);
+                },
+                error: (error) => {
+                    setError(`Failed to parse CSV: ${error.message}`);
+                },
+            });
+        },
+        [setData]
+    );
 
     const handleMappingChange = (key: string, value: string) => {
         setMapping({ ...mapping, [key]: value });
@@ -1180,7 +1180,7 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
         return result;
     };
 
-    const runAnalysis = () => {
+    const runAnalysis = useCallback(() => {
         if (!rawData.length) {
             setError("No data loaded.");
             return;
@@ -1271,61 +1271,66 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
                         minValue: Math.min(...gradeValues),
                         maxValue: Math.max(...gradeValues),
                     });
+
+                    summaries.push({
+                        Element: element,
+                        CRM: crm,
+                        Samples: summary.numSamples,
+                        Mean: summary.mean.toFixed(4),
+                        Expected: summary.expectedValue.toFixed(4),
+                        "Std Dev": summary.standardDeviation.toFixed(4),
+                        "Bias (%)": summary.bias.toFixed(2),
+                        Failures: summary.numOutliers,
+                        "Failure Rate (%)": summary.failureRate.toFixed(1),
+                    });
                 }
             }
 
             setCharts(generatedCharts);
-            setActiveTab("charts");
-            setIsProcessing(false);
+            setAllSummaries(summaries);
+
+            if (generatedCharts.length === 0) {
+                setError("No valid data found.");
+            } else {
+                setActiveTab("charts");
+            }
         } catch (err) {
-            console.error(err);
-            setError("Analysis failed. Please check your data.");
+            setError(`Analysis failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+        } finally {
             setIsProcessing(false);
         }
-    };
-
+    }, [rawData, mapping, selectedElements, selectedCRMs, options, getCRMsForElement]);
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">CRM Analysis</h1>
-                    <p className="text-slate-400">Standard reference material monitoring</p>
+                    <p className="text-slate-400">Control Reference Material tracking with ±2/3σ control limits</p>
                 </div>
+
                 <div className="flex items-center gap-4">
                     {/* Saving Indicator */}
                     <div className="text-sm font-medium">
                         {isFirstMount.current ? (
                             <span className="text-slate-500">Loading...</span>
-                        ) : saveStatus === "saving" ? (
-                            <span className="text-amber-400 flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                                Saving...
-                            </span>
-                        ) : saveStatus === "error" ? (
-                            <span className="text-red-400 flex items-center gap-1" title={saveErrorMsg}>
-                                <AlertCircle className="w-3 h-3" />
-                                Save Error: {saveErrorMsg}
-                            </span>
-                        ) : saveStatus === "saved" ? (
-                            <span className="text-emerald-500 flex items-center gap-1">
-                                <Check className="w-3 h-3" />
-                                Saved
-                            </span>
                         ) : (
-                            <span className="text-slate-600">Ready</span>
+                            <span className="text-emerald-500 flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                Cloud Sync Active
+                            </span>
                         )}
                     </div>
 
                     {charts.length > 0 && (
                         <div className="flex items-center gap-3">
-                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/50">
+                            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
                                 {charts.length} chart{charts.length !== 1 ? "s" : ""} generated
                             </Badge>
                             <ExportDialog charts={charts} />
                         </div>
                     )}
                 </div>
-            </div> {error && (
+            </div>    {error && (
                 <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                     <p className="text-red-400">{error}</p>
