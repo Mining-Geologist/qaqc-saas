@@ -1054,7 +1054,7 @@ function CRMPageContent({ userId }: { userId: string }) {
                                     setColumns(cols);
                                     console.log("Cloud CSV loaded:", parsedData.length, "rows");
                                 },
-                                error: (err) => {
+                                error: (err: Error) => {
                                     console.error("Failed to parse cloud CSV:", err);
                                     setError("Failed to load cloud data");
                                 }
