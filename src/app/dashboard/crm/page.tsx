@@ -966,6 +966,8 @@ function CRMPageContent({ userId, user }: { userId: string, user: any }) {
     // -----------------------------------------------------------------------------
     // Cloud Synchronization
     // -----------------------------------------------------------------------------
+    const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+    const [saveErrorMsg, setSaveErrorMsg] = useState("");
     const isFirstMount = useRef(true);
 
     // 1. Hydrate from Server on Mount
