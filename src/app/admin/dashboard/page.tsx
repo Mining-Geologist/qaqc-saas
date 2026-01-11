@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, CreditCard, TrendingUp, Activity, DollarSign, ArrowUpRight, UserPlus, RefreshCw } from "lucide-react";
+import { Users, CreditCard, TrendingUp, Activity, DollarSign, ArrowUpRight, UserPlus, RefreshCw, AlertCircle } from "lucide-react";
 import { getAdminStats } from "@/actions/admin";
 import { syncClerkUsers } from "@/actions/admin-sync";
 import { useState, useEffect } from "react";
@@ -19,6 +19,7 @@ export default function AdminDashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [syncDebug, setSyncDebug] = useState<any>(null);
 
     const loadStats = () => {
         setIsLoading(true);
@@ -43,17 +44,16 @@ export default function AdminDashboardPage() {
 
     const handleSync = async () => {
         setIsSyncing(true);
+        setSyncDebug(null);
         try {
             const res = await syncClerkUsers();
+            setSyncDebug(res);
             if (res.success) {
-                alert(`Synced ${res.synced} users successfully.\nErrors: ${res.errors}`);
                 loadStats();
-            } else {
-                alert(`Sync failed: ${res.error}`);
             }
         } catch (e) {
             console.error(e);
-            alert("Sync error occurred");
+            setSyncDebug({ success: false, error: e instanceof Error ? e.message : "Active sync exception" });
         } finally {
             setIsSyncing(false);
         }
@@ -125,6 +125,38 @@ export default function AdminDashboardPage() {
                     {isSyncing ? "Syncing..." : "Sync Users"}
                 </Button>
             </div>
+
+            {/* Sync Debug Panel */}
+            {
+                syncDebug && (
+                    <Card className={`border ${syncDebug.success ? "border-emerald-500/50 bg-emerald-500/10" : "border-red-500/50 bg-red-500/10"}`}>
+                        <CardContent className="pt-6">
+                            <div className="flex items-start gap-3">
+                                {syncDebug.success ? (
+                                    <RefreshCw className="w-5 h-5 text-emerald-400 mt-1" />
+                                ) : (
+                                    <AlertCircle className="w-5 h-5 text-red-400 mt-1" />
+                                )}
+                                <div>
+                                    <h3 className={`font-bold ${syncDebug.success ? "text-emerald-400" : "text-red-400"}`}>
+                                        {syncDebug.success ? "Sync Completed" : "Sync Failed"}
+                                    </h3>
+                                    <div className="text-sm mt-1 space-y-1 text-slate-300">
+                                        {syncDebug.success ? (
+                                            <>
+                                                <p>Users Synced: <span className="font-mono text-white">{syncDebug.synced}</span></p>
+                                                <p>Errors: <span className="font-mono text-white">{syncDebug.errors}</span></p>
+                                            </>
+                                        ) : (
+                                            <p>Error: <span className="font-mono text-white">{syncDebug.error}</span></p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )
+            }
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -223,6 +255,6 @@ export default function AdminDashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </div >
     );
 }
