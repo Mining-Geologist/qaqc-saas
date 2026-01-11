@@ -29,10 +29,22 @@ export async function saveAnalysisDraft(
     if (!user) return { success: false, error: "Unauthorized" };
 
     try {
+        // Ensure user exists in DB and get their internal ID
+        const dbUser = await prisma.user.upsert({
+            where: { clerkId: user.id },
+            update: {},
+            create: {
+                clerkId: user.id,
+                email: user.emailAddresses[0]?.emailAddress || "",
+                name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+                avatarUrl: user.imageUrl,
+            },
+        });
+
         await prisma.analysisDraft.upsert({
             where: {
                 userId_toolType: {
-                    userId: user.id,
+                    userId: dbUser.id,
                     toolType: toolType,
                 },
             },
@@ -55,7 +67,7 @@ export async function saveAnalysisDraft(
                 lastActive: new Date(),
             },
             create: {
-                userId: user.id,
+                userId: dbUser.id,
                 toolType: toolType,
                 data: draft.data ?? undefined,
                 config: {
@@ -86,10 +98,19 @@ export async function loadAnalysisDraft(toolType: QaqcToolType) {
     if (!user) return { success: false, error: "Unauthorized" };
 
     try {
+        // Get internal DB user ID
+        const dbUser = await prisma.user.findUnique({
+            where: { clerkId: user.id }
+        });
+
+        if (!dbUser) {
+            return { success: true, draft: null };
+        }
+
         const draft = await prisma.analysisDraft.findUnique({
             where: {
                 userId_toolType: {
-                    userId: user.id,
+                    userId: dbUser.id,
                     toolType: toolType,
                 },
             },
