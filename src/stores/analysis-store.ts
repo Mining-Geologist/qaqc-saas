@@ -171,7 +171,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
                         ),
                     ])
                 ),
-            }),
+            }) as Pick<AnalysisStore, 'userDrafts'>,
         }
     )
 );
